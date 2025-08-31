@@ -16,18 +16,18 @@ ipcRenderer
     });
 
 // Create reference to the main app element
-const cheatingDaddyApp = document.querySelector('cheating-daddy-app');
+const PersonalPaApp = document.querySelector('personal-pa-app');
 
 // Simplified cheddar object with only UI-related functions
 const cheddar = {
     // Element access
-    element: () => cheatingDaddyApp,
-    e: () => cheatingDaddyApp,
+    element: () => PersonalPaApp,
+    e: () => PersonalPaApp,
     // App state functions
-    getCurrentView: () => cheatingDaddyApp.currentView,
-    getLayoutMode: () => cheatingDaddyApp.layoutMode,
+    getCurrentView: () => PersonalPaApp.currentView,
+    getLayoutMode: () => PersonalPaApp.layoutMode,
     // Status function
-    setStatus: text => cheatingDaddyApp.setStatus(text),
+    setStatus: text => PersonalPaApp.setStatus(text),
     // Content protection function
     getContentProtection: () => {
         const contentProtection = localStorage.getItem('contentProtection');

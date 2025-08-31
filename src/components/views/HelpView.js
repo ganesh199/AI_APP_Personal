@@ -297,13 +297,13 @@ export class HelpView extends LitElement {
                         <span>Community & Support</span>
                     </div>
                     <div class="community-links">
-                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://cheatingdaddy.com')}>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://www.google.com/')}>
                             🌐 Official Website
                         </div>
-                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://github.com/sohzm/cheating-daddy')}>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://www.google.com/')}>
                             📂 GitHub Repository
                         </div>
-                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://discord.gg/GCBdubnXfJ')}>
+                        <div class="community-link" @click=${() => this.handleExternalLinkClick('https://www.google.com/')}>
                             💬 Discord Community
                         </div>
                     </div>
