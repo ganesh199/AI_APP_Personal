@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Multi-LLM Chat Backend Server
+Multi-LLM Chat Backend Server using FastAPI
 Provides API endpoints for multiple LLM providers
 """
 import os
@@ -9,16 +9,26 @@ import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import logging
-from flask import Flask, request, jsonify, Response
-from flask_cors import CORS
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 import requests
+import uvicorn
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-CORS(app)
+app = FastAPI(title="Multi-LLM Chat API", version="1.0.0")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Global storage for configurations and chat sessions
 llm_configs = {}
@@ -73,6 +83,43 @@ LLM_PROVIDERS = {
         "default_base_url": "http://localhost:11434"
     }
 }
+
+# Pydantic models for request/response validation
+class ConfigureRequest(BaseModel):
+    provider: str
+    config: Dict[str, Any]
+    session_id: str = "default"
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str = "default"
+
+class ChatResponse(BaseModel):
+    success: bool
+    response: Optional[str] = None
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    session_id: Optional[str] = None
+    error: Optional[str] = None
+
+class SessionInfo(BaseModel):
+    session_id: str
+    provider: str
+    model: Optional[str] = None
+    created_at: str
+    message_count: int
+    last_message: Optional[str] = None
+
+class SessionsResponse(BaseModel):
+    success: bool
+    sessions: List[SessionInfo]
+    error: Optional[str] = None
+
+class HealthResponse(BaseModel):
+    success: bool
+    status: str
+    active_sessions: int
+    providers: List[str]
 
 class LLMClient:
     """Base class for LLM clients"""
@@ -266,39 +313,38 @@ def create_llm_client(provider: str, config: Dict[str, Any]) -> Optional[LLMClie
         return None
 
 # API Routes
-@app.route('/api/providers', methods=['GET'])
-def get_providers():
+@app.get("/api/providers")
+async def get_providers():
     """Get list of available LLM providers"""
-    return jsonify(LLM_PROVIDERS)
+    return LLM_PROVIDERS
 
-@app.route('/api/configure', methods=['POST'])
-def configure_llm():
+@app.post("/api/configure")
+async def configure_llm(request: ConfigureRequest):
     """Configure LLM provider"""
     try:
-        data = request.get_json()
-        provider = data.get('provider')
-        config = data.get('config', {})
-        session_id = data.get('session_id', 'default')
+        provider = request.provider
+        config = request.config
+        session_id = request.session_id
         
         if not provider or provider not in LLM_PROVIDERS:
-            return jsonify({"success": False, "error": "Invalid provider"}), 400
+            raise HTTPException(status_code=400, detail="Invalid provider")
         
         # Validate required fields
         provider_config = LLM_PROVIDERS[provider]
         
         if provider_config["api_key"] and not config.get("api_key"):
-            return jsonify({"success": False, "error": "API Key is required"}), 400
+            raise HTTPException(status_code=400, detail="API Key is required")
         
         if provider_config["base_url"] and not config.get("base_url"):
-            return jsonify({"success": False, "error": "Base URL is required"}), 400
+            raise HTTPException(status_code=400, detail="Base URL is required")
         
         if provider_config["model_name"] and not config.get("model_name"):
-            return jsonify({"success": False, "error": "Model selection is required"}), 400
+            raise HTTPException(status_code=400, detail="Model selection is required")
         
         # Create LLM client
         client = create_llm_client(provider, config)
         if not client:
-            return jsonify({"success": False, "error": "Failed to create LLM client"}), 500
+            raise HTTPException(status_code=500, detail="Failed to create LLM client")
         
         # Store configuration
         llm_configs[session_id] = {
@@ -312,30 +358,31 @@ def configure_llm():
         if session_id not in chat_sessions:
             chat_sessions[session_id] = []
         
-        return jsonify({
+        return {
             "success": True,
             "provider": provider,
             "model": config.get("model_name"),
             "session_id": session_id
-        })
+        }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Configuration error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/chat', methods=['POST'])
-async def chat():
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
     """Send message to configured LLM"""
     try:
-        data = request.get_json()
-        message = data.get('message', '').strip()
-        session_id = data.get('session_id', 'default')
+        message = request.message.strip()
+        session_id = request.session_id
         
         if not message:
-            return jsonify({"success": False, "error": "Message is required"}), 400
+            raise HTTPException(status_code=400, detail="Message is required")
         
         if session_id not in llm_configs:
-            return jsonify({"success": False, "error": "LLM not configured for this session"}), 400
+            raise HTTPException(status_code=400, detail="LLM not configured for this session")
         
         # Get LLM client
         llm_info = llm_configs[session_id]
@@ -366,58 +413,67 @@ async def chat():
             "timestamp": datetime.now().isoformat()
         })
         
-        return jsonify({
-            "success": True,
-            "response": response,
-            "provider": llm_info["provider"],
-            "model": llm_info["config"].get("model_name"),
-            "session_id": session_id
-        })
+        return ChatResponse(
+            success=True,
+            response=response,
+            provider=llm_info["provider"],
+            model=llm_info["config"].get("model_name"),
+            session_id=session_id
+        )
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Chat error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return ChatResponse(
+            success=False,
+            error=str(e)
+        )
 
-@app.route('/api/history/<session_id>', methods=['GET'])
-def get_chat_history(session_id):
+@app.get("/api/history/{session_id}")
+async def get_chat_history(session_id: str):
     """Get chat history for a session"""
     try:
         history = chat_sessions.get(session_id, [])
-        return jsonify({
+        return {
             "success": True,
             "history": history,
             "session_id": session_id
-        })
+        }
     except Exception as e:
         logger.error(f"History error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/sessions', methods=['GET'])
-def get_sessions():
+@app.get("/api/sessions", response_model=SessionsResponse)
+async def get_sessions():
     """Get list of all chat sessions"""
     try:
         sessions = []
         for session_id, config in llm_configs.items():
             history = chat_sessions.get(session_id, [])
-            sessions.append({
-                "session_id": session_id,
-                "provider": config["provider"],
-                "model": config["config"].get("model_name"),
-                "created_at": config["created_at"],
-                "message_count": len(history),
-                "last_message": history[-1]["timestamp"] if history else None
-            })
+            sessions.append(SessionInfo(
+                session_id=session_id,
+                provider=config["provider"],
+                model=config["config"].get("model_name"),
+                created_at=config["created_at"],
+                message_count=len(history),
+                last_message=history[-1]["timestamp"] if history else None
+            ))
         
-        return jsonify({
-            "success": True,
-            "sessions": sessions
-        })
+        return SessionsResponse(
+            success=True,
+            sessions=sessions
+        )
     except Exception as e:
         logger.error(f"Sessions error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return SessionsResponse(
+            success=False,
+            sessions=[],
+            error=str(e)
+        )
 
-@app.route('/api/clear/<session_id>', methods=['DELETE'])
-def clear_session(session_id):
+@app.delete("/api/clear/{session_id}")
+async def clear_session(session_id: str):
     """Clear a specific chat session"""
     try:
         if session_id in chat_sessions:
@@ -425,23 +481,23 @@ def clear_session(session_id):
         if session_id in llm_configs:
             del llm_configs[session_id]
         
-        return jsonify({
+        return {
             "success": True,
             "message": f"Session {session_id} cleared"
-        })
+        }
     except Exception as e:
         logger.error(f"Clear session error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/api/health', methods=['GET'])
-def health_check():
+@app.get("/api/health", response_model=HealthResponse)
+async def health_check():
     """Health check endpoint"""
-    return jsonify({
-        "success": True,
-        "status": "healthy",
-        "active_sessions": len(llm_configs),
-        "providers": list(LLM_PROVIDERS.keys())
-    })
+    return HealthResponse(
+        success=True,
+        status="healthy",
+        active_sessions=len(llm_configs),
+        providers=list(LLM_PROVIDERS.keys())
+    )
 
 if __name__ == '__main__':
     print("🚀 Starting Multi-LLM Chat Backend Server...")
@@ -455,4 +511,4 @@ if __name__ == '__main__':
     print("   DELETE /api/clear/<session_id> - Clear session")
     print("   GET  /api/health - Health check")
     
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=5000)
