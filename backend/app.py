@@ -3,14 +3,12 @@
 Multi-LLM Chat Backend Server
 Provides API endpoints for multiple LLM providers
 """
-
 import os
 import json
 import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import logging
-
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import requests
@@ -268,7 +266,6 @@ def create_llm_client(provider: str, config: Dict[str, Any]) -> Optional[LLMClie
         return None
 
 # API Routes
-
 @app.route('/api/providers', methods=['GET'])
 def get_providers():
     """Get list of available LLM providers"""
@@ -327,7 +324,7 @@ def configure_llm():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/chat', methods=['POST'])
-def chat():
+async def chat():
     """Send message to configured LLM"""
     try:
         data = request.get_json()
