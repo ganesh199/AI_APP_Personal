@@ -40,15 +40,54 @@ export class MainView extends LitElement {
             width: 100%;
             max-width: 500px;
         }
+
+        .action-buttons {
+            margin-top: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .action-button {
+            background: var(--focus-border-color, #007aff);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-button:hover {
+            background: var(--text-input-button-hover, #0056b3);
+        }
+
+        .action-button.secondary {
+            background: var(--button-background);
+            color: var(--text-color);
+            border: 1px solid var(--button-border);
+        }
+
+        .action-button.secondary:hover {
+            background: var(--hover-background);
+        }
     `;
 
     static properties = {
         onLayoutModeChange: { type: Function },
+        onLLMChatClick: { type: Function },
     };
 
     constructor() {
         super();
         this.onLayoutModeChange = () => {};
+        this.onLLMChatClick = () => {};
         this.loadLayoutMode();
         resizeLayout();
     }
@@ -84,6 +123,16 @@ export class MainView extends LitElement {
                     <span class="feature-icon">🎨</span>
                     <span>Adjustable interface layout</span>
                 </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🤖</span>
+                    <span>Multi-LLM chat support</span>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-button" @click=${this.onLLMChatClick}>
+                    🤖 Start Multi-LLM Chat
+                </button>
             </div>
         `;
     }

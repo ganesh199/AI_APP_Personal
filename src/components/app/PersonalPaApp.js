@@ -6,6 +6,8 @@ import { HelpView } from '../views/HelpView.js';
 import { HistoryView } from '../views/HistoryView.js';
 import { OnboardingView } from '../views/OnboardingView.js';
 import { AdvancedView } from '../views/AdvancedView.js';
+import { LLMConfigView } from '../views/LLMConfigView.js';
+import { LLMChatView } from '../views/LLMChatView.js';
 
 export class PersonalPaApp extends LitElement {
     static styles = css`
@@ -105,6 +107,7 @@ export class PersonalPaApp extends LitElement {
         layoutMode: { type: String },
         advancedMode: { type: Boolean },
         _isClickThrough: { state: true },
+        llmChatConfig: { type: Object },
     };
 
     constructor() {
@@ -118,6 +121,7 @@ export class PersonalPaApp extends LitElement {
         this.layoutMode = localStorage.getItem('layoutMode') || 'normal';
         this.advancedMode = localStorage.getItem('advancedMode') === 'true';
         this._isClickThrough = false;
+        this.llmChatConfig = null;
         this.updateLayoutMode();
     }
 
@@ -146,9 +150,21 @@ export class PersonalPaApp extends LitElement {
         this.requestUpdate();
     }
 
+    handleLLMChatClick() {
+        this.currentView = 'llm-config';
+        this.requestUpdate();
+    }
+
+    handleLLMConfigComplete(config) {
+        this.llmChatConfig = config;
+        this.currentView = 'llm-chat';
+        this.requestUpdate();
+    }
+
     async handleClose() {
         if (this.currentView === 'customize' || this.currentView === 'help' || 
-            this.currentView === 'history' || this.currentView === 'advanced') {
+            this.currentView === 'history' || this.currentView === 'advanced' ||
+            this.currentView === 'llm-config' || this.currentView === 'llm-chat') {
             this.currentView = 'main';
         } else {
             if (window.require) {
@@ -239,6 +255,7 @@ export class PersonalPaApp extends LitElement {
                 return html`
                     <main-view
                         .onLayoutModeChange=${layoutMode => this.handleLayoutModeChange(layoutMode)}
+                        .onLLMChatClick=${() => this.handleLLMChatClick()}
                     ></main-view>
                 `;
             case 'customize':
@@ -264,6 +281,22 @@ export class PersonalPaApp extends LitElement {
                 return html` <history-view></history-view> `;
             case 'advanced':
                 return html` <advanced-view></advanced-view> `;
+            case 'llm-config':
+                return html`
+                    <llm-config-view
+                        .onConfigComplete=${config => this.handleLLMConfigComplete(config)}
+                        .onBackClick=${() => this.handleBackClick()}
+                    ></llm-config-view>
+                `;
+            case 'llm-chat':
+                return html`
+                    <llm-chat-view
+                        .currentProvider=${this.llmChatConfig?.provider || ''}
+                        .currentModel=${this.llmChatConfig?.model || ''}
+                        .sessionId=${this.llmChatConfig?.sessionId || 'default'}
+                        .onBackClick=${() => this.handleBackClick()}
+                    ></llm-chat-view>
+                `;
             default:
                 return html`<div>Unknown view: ${this.currentView}</div>`;
         }
