@@ -1,0 +1,461 @@
+#!/usr/bin/env python3
+"""
+Multi-LLM Chat Backend Server
+Provides API endpoints for multiple LLM providers
+"""
+
+import os
+import json
+import asyncio
+from typing import Dict, Any, Optional, List
+from datetime import datetime
+import logging
+
+from flask import Flask, request, jsonify, Response
+from flask_cors import CORS
+import requests
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+CORS(app)
+
+# Global storage for configurations and chat sessions
+llm_configs = {}
+chat_sessions = {}
+
+# Define LLM providers configuration
+LLM_PROVIDERS = {
+    "OpenAI": {
+        "api_key": True,
+        "base_url": False,
+        "model_name": True,
+        "models": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o"],
+        "description": "ChatGPT models by OpenAI",
+        "default_base_url": "https://api.openai.com/v1"
+    },
+    "Google Gemini": {
+        "api_key": True,
+        "base_url": False,
+        "model_name": True,
+        "models": ["gemini-pro", "gemini-pro-vision", "gemini-1.5-pro"],
+        "description": "Google's Gemini AI models",
+        "default_base_url": "https://generativelanguage.googleapis.com/v1beta"
+    },
+    "OpenRouter": {
+        "api_key": True,
+        "base_url": True,
+        "model_name": True,
+        "models": [
+            "openai/gpt-3.5-turbo",
+            "openai/gpt-4",
+            "anthropic/claude-2",
+            "meta-llama/llama-2-70b-chat",
+            "mistralai/mistral-7b-instruct"
+        ],
+        "description": "Unified access to multiple models",
+        "default_base_url": "https://openrouter.ai/api/v1"
+    },
+    "Anthropic": {
+        "api_key": True,
+        "base_url": False,
+        "model_name": True,
+        "models": ["claude-3-sonnet", "claude-3-opus", "claude-3-haiku"],
+        "description": "Anthropic's Claude models",
+        "default_base_url": "https://api.anthropic.com"
+    },
+    "Local Ollama": {
+        "api_key": False,
+        "base_url": True,
+        "model_name": True,
+        "models": ["llama2", "mistral", "codellama", "phi", "neural-chat"],
+        "description": "Run models locally on your machine",
+        "default_base_url": "http://localhost:11434"
+    }
+}
+
+class LLMClient:
+    """Base class for LLM clients"""
+    
+    def __init__(self, provider: str, config: Dict[str, Any]):
+        self.provider = provider
+        self.config = config
+        
+    async def generate_response(self, messages: List[Dict[str, str]]) -> str:
+        """Generate response from the LLM"""
+        raise NotImplementedError
+
+class OpenAIClient(LLMClient):
+    """OpenAI API client"""
+    
+    async def generate_response(self, messages: List[Dict[str, str]]) -> str:
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.config['api_key']}",
+                "Content-Type": "application/json"
+            }
+            
+            base_url = self.config.get('base_url', LLM_PROVIDERS["OpenAI"]["default_base_url"])
+            url = f"{base_url}/chat/completions"
+            
+            payload = {
+                "model": self.config["model_name"],
+                "messages": messages,
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
+            
+        except Exception as e:
+            logger.error(f"OpenAI API error: {e}")
+            return f"Error: {str(e)}"
+
+class GeminiClient(LLMClient):
+    """Google Gemini API client"""
+    
+    async def generate_response(self, messages: List[Dict[str, str]]) -> str:
+        try:
+            # Convert messages to Gemini format
+            prompt = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+            
+            url = f"{LLM_PROVIDERS['Google Gemini']['default_base_url']}/models/{self.config['model_name']}:generateContent"
+            
+            headers = {
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "contents": [{
+                    "parts": [{"text": prompt}]
+                }]
+            }
+            
+            params = {"key": self.config["api_key"]}
+            
+            response = requests.post(url, headers=headers, json=payload, params=params, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+            
+        except Exception as e:
+            logger.error(f"Gemini API error: {e}")
+            return f"Error: {str(e)}"
+
+class OpenRouterClient(LLMClient):
+    """OpenRouter API client"""
+    
+    async def generate_response(self, messages: List[Dict[str, str]]) -> str:
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.config['api_key']}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "Personal PA Chat"
+            }
+            
+            base_url = self.config.get('base_url', LLM_PROVIDERS["OpenRouter"]["default_base_url"])
+            url = f"{base_url}/chat/completions"
+            
+            payload = {
+                "model": self.config["model_name"],
+                "messages": messages,
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
+            
+        except Exception as e:
+            logger.error(f"OpenRouter API error: {e}")
+            return f"Error: {str(e)}"
+
+class AnthropicClient(LLMClient):
+    """Anthropic Claude API client"""
+    
+    async def generate_response(self, messages: List[Dict[str, str]]) -> str:
+        try:
+            headers = {
+                "x-api-key": self.config['api_key'],
+                "Content-Type": "application/json",
+                "anthropic-version": "2023-06-01"
+            }
+            
+            url = f"{LLM_PROVIDERS['Anthropic']['default_base_url']}/v1/messages"
+            
+            # Convert messages to Anthropic format
+            system_message = ""
+            user_messages = []
+            
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    user_messages.append(msg)
+            
+            payload = {
+                "model": self.config["model_name"],
+                "max_tokens": 1000,
+                "messages": user_messages
+            }
+            
+            if system_message:
+                payload["system"] = system_message
+            
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["content"][0]["text"]
+            
+        except Exception as e:
+            logger.error(f"Anthropic API error: {e}")
+            return f"Error: {str(e)}"
+
+class OllamaClient(LLMClient):
+    """Local Ollama API client"""
+    
+    async def generate_response(self, messages: List[Dict[str, str]]) -> str:
+        try:
+            base_url = self.config.get('base_url', LLM_PROVIDERS["Local Ollama"]["default_base_url"])
+            url = f"{base_url}/api/chat"
+            
+            payload = {
+                "model": self.config["model_name"],
+                "messages": messages,
+                "stream": False
+            }
+            
+            response = requests.post(url, json=payload, timeout=60)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["message"]["content"]
+            
+        except Exception as e:
+            logger.error(f"Ollama API error: {e}")
+            return f"Error: {str(e)}"
+
+def create_llm_client(provider: str, config: Dict[str, Any]) -> Optional[LLMClient]:
+    """Factory function to create appropriate LLM client"""
+    try:
+        if provider == "OpenAI":
+            return OpenAIClient(provider, config)
+        elif provider == "Google Gemini":
+            return GeminiClient(provider, config)
+        elif provider == "OpenRouter":
+            return OpenRouterClient(provider, config)
+        elif provider == "Anthropic":
+            return AnthropicClient(provider, config)
+        elif provider == "Local Ollama":
+            return OllamaClient(provider, config)
+        else:
+            logger.error(f"Unknown provider: {provider}")
+            return None
+    except Exception as e:
+        logger.error(f"Error creating client for {provider}: {e}")
+        return None
+
+# API Routes
+
+@app.route('/api/providers', methods=['GET'])
+def get_providers():
+    """Get list of available LLM providers"""
+    return jsonify(LLM_PROVIDERS)
+
+@app.route('/api/configure', methods=['POST'])
+def configure_llm():
+    """Configure LLM provider"""
+    try:
+        data = request.get_json()
+        provider = data.get('provider')
+        config = data.get('config', {})
+        session_id = data.get('session_id', 'default')
+        
+        if not provider or provider not in LLM_PROVIDERS:
+            return jsonify({"success": False, "error": "Invalid provider"}), 400
+        
+        # Validate required fields
+        provider_config = LLM_PROVIDERS[provider]
+        
+        if provider_config["api_key"] and not config.get("api_key"):
+            return jsonify({"success": False, "error": "API Key is required"}), 400
+        
+        if provider_config["base_url"] and not config.get("base_url"):
+            return jsonify({"success": False, "error": "Base URL is required"}), 400
+        
+        if provider_config["model_name"] and not config.get("model_name"):
+            return jsonify({"success": False, "error": "Model selection is required"}), 400
+        
+        # Create LLM client
+        client = create_llm_client(provider, config)
+        if not client:
+            return jsonify({"success": False, "error": "Failed to create LLM client"}), 500
+        
+        # Store configuration
+        llm_configs[session_id] = {
+            "provider": provider,
+            "config": config,
+            "client": client,
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Initialize chat session
+        if session_id not in chat_sessions:
+            chat_sessions[session_id] = []
+        
+        return jsonify({
+            "success": True,
+            "provider": provider,
+            "model": config.get("model_name"),
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Configuration error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """Send message to configured LLM"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        session_id = data.get('session_id', 'default')
+        
+        if not message:
+            return jsonify({"success": False, "error": "Message is required"}), 400
+        
+        if session_id not in llm_configs:
+            return jsonify({"success": False, "error": "LLM not configured for this session"}), 400
+        
+        # Get LLM client
+        llm_info = llm_configs[session_id]
+        client = llm_info["client"]
+        
+        # Get chat history
+        if session_id not in chat_sessions:
+            chat_sessions[session_id] = []
+        
+        # Add user message to history
+        chat_sessions[session_id].append({
+            "role": "user",
+            "content": message,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Prepare messages for LLM (last 10 messages to avoid token limits)
+        messages = [{"role": msg["role"], "content": msg["content"]} 
+                   for msg in chat_sessions[session_id][-10:]]
+        
+        # Generate response
+        response = await client.generate_response(messages)
+        
+        # Add AI response to history
+        chat_sessions[session_id].append({
+            "role": "assistant",
+            "content": response,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        return jsonify({
+            "success": True,
+            "response": response,
+            "provider": llm_info["provider"],
+            "model": llm_info["config"].get("model_name"),
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Chat error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/history/<session_id>', methods=['GET'])
+def get_chat_history(session_id):
+    """Get chat history for a session"""
+    try:
+        history = chat_sessions.get(session_id, [])
+        return jsonify({
+            "success": True,
+            "history": history,
+            "session_id": session_id
+        })
+    except Exception as e:
+        logger.error(f"History error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/sessions', methods=['GET'])
+def get_sessions():
+    """Get list of all chat sessions"""
+    try:
+        sessions = []
+        for session_id, config in llm_configs.items():
+            history = chat_sessions.get(session_id, [])
+            sessions.append({
+                "session_id": session_id,
+                "provider": config["provider"],
+                "model": config["config"].get("model_name"),
+                "created_at": config["created_at"],
+                "message_count": len(history),
+                "last_message": history[-1]["timestamp"] if history else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "sessions": sessions
+        })
+    except Exception as e:
+        logger.error(f"Sessions error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/clear/<session_id>', methods=['DELETE'])
+def clear_session(session_id):
+    """Clear a specific chat session"""
+    try:
+        if session_id in chat_sessions:
+            del chat_sessions[session_id]
+        if session_id in llm_configs:
+            del llm_configs[session_id]
+        
+        return jsonify({
+            "success": True,
+            "message": f"Session {session_id} cleared"
+        })
+    except Exception as e:
+        logger.error(f"Clear session error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "success": True,
+        "status": "healthy",
+        "active_sessions": len(llm_configs),
+        "providers": list(LLM_PROVIDERS.keys())
+    })
+
+if __name__ == '__main__':
+    print("🚀 Starting Multi-LLM Chat Backend Server...")
+    print("📡 Server will be available at: http://localhost:5000")
+    print("🔗 API endpoints:")
+    print("   GET  /api/providers - Get available LLM providers")
+    print("   POST /api/configure - Configure LLM provider")
+    print("   POST /api/chat - Send chat message")
+    print("   GET  /api/history/<session_id> - Get chat history")
+    print("   GET  /api/sessions - Get all sessions")
+    print("   DELETE /api/clear/<session_id> - Clear session")
+    print("   GET  /api/health - Health check")
+    
+    app.run(host='0.0.0.0', port=5000, debug=True)
