@@ -31,8 +31,9 @@ app.add_middleware(
 )
 
 # Global storage for configurations and chat sessions
-llm_configs = {}
+llm_configs = {}  # Store by provider_key instead of session_id
 chat_sessions = {}
+provider_configs = {}  # Store multiple provider configurations
 
 # Define LLM providers configuration
 LLM_PROVIDERS = {
@@ -48,7 +49,7 @@ LLM_PROVIDERS = {
         "api_key": True,
         "base_url": False,
         "model_name": True,
-        "models": ["gemini-pro", "gemini-pro-vision", "gemini-1.5-pro"],
+        "models": ["gemini-pro", "gemini-pro-vision", "gemini-1.5-pro", "gemini-2.5-flash"],
         "description": "Google's Gemini AI models",
         "default_base_url": "https://generativelanguage.googleapis.com/v1beta"
     },
@@ -61,7 +62,8 @@ LLM_PROVIDERS = {
             "openai/gpt-4",
             "anthropic/claude-2",
             "meta-llama/llama-2-70b-chat",
-            "mistralai/mistral-7b-instruct"
+            "mistralai/mistral-7b-instruct",
+            "deepseek/deepseek-chat-v3.1:free"
         ],
         "description": "Unified access to multiple models",
         "default_base_url": "https://openrouter.ai/api/v1"
@@ -93,10 +95,11 @@ class ConfigureRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
+    provider_key: Optional[str] = None
 
 class ChatResponse(BaseModel):
     success: bool
-    response: Optional[str] = None
+    response: Optional[str] = None 
     provider: Optional[str] = None
     model: Optional[str] = None
     session_id: Optional[str] = None
@@ -318,6 +321,41 @@ async def get_providers():
     """Get list of available LLM providers"""
     return LLM_PROVIDERS
 
+@app.post("/api/configure-multiple")
+async def configure_multiple_providers(providers: Dict[str, Dict[str, Any]]):
+    """Configure multiple LLM providers from frontend"""
+    try:
+        configured_count = 0
+        
+        for provider_key, provider_data in providers.items():
+            provider = provider_data.get('provider')
+            config = {
+                'api_key': provider_data.get('apiKey'),
+                'model_name': provider_data.get('model')
+            }
+            
+            if provider and provider in LLM_PROVIDERS:
+                # Create LLM client
+                client = create_llm_client(provider, config)
+                if client:
+                    provider_configs[provider_key] = {
+                        "provider": provider,
+                        "config": config,
+                        "client": client,
+                        "created_at": datetime.now().isoformat()
+                    }
+                    configured_count += 1
+        
+        return {
+            "success": True,
+            "configured_count": configured_count,
+            "message": f"Configured {configured_count} providers"
+        }
+        
+    except Exception as e:
+        logger.error(f"Multiple configuration error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/configure")
 async def configure_llm(request: ConfigureRequest):
     """Configure LLM provider"""
@@ -346,13 +384,19 @@ async def configure_llm(request: ConfigureRequest):
         if not client:
             raise HTTPException(status_code=500, detail="Failed to create LLM client")
         
-        # Store configuration
-        llm_configs[session_id] = {
+        # Create provider key
+        provider_key = f"{provider}_{config.get('model_name')}"
+        
+        # Store configuration by provider key
+        provider_configs[provider_key] = {
             "provider": provider,
             "config": config,
             "client": client,
             "created_at": datetime.now().isoformat()
         }
+        
+        # Store legacy session-based config for backward compatibility
+        llm_configs[session_id] = provider_configs[provider_key]
         
         # Initialize chat session
         if session_id not in chat_sessions:
@@ -362,7 +406,8 @@ async def configure_llm(request: ConfigureRequest):
             "success": True,
             "provider": provider,
             "model": config.get("model_name"),
-            "session_id": session_id
+            "session_id": session_id,
+            "provider_key": provider_key
         }
         
     except HTTPException:
@@ -377,15 +422,22 @@ async def chat(request: ChatRequest):
     try:
         message = request.message.strip()
         session_id = request.session_id
+        provider_key = request.provider_key
         
         if not message:
             raise HTTPException(status_code=400, detail="Message is required")
         
-        if session_id not in llm_configs:
-            raise HTTPException(status_code=400, detail="LLM not configured for this session")
+        # Determine which provider config to use
+        llm_info = None
+        if provider_key and provider_key in provider_configs:
+            # Use specific provider
+            llm_info = provider_configs[provider_key]
+        elif session_id in llm_configs:
+            # Fallback to session-based config
+            llm_info = llm_configs[session_id]
+        else:
+            raise HTTPException(status_code=400, detail="No LLM provider configured")
         
-        # Get LLM client
-        llm_info = llm_configs[session_id]
         client = llm_info["client"]
         
         # Get chat history

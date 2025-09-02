@@ -109,6 +109,138 @@ export class LLMChatView extends LitElement {
             cursor: text;
         }
 
+        /* Markdown styling */
+        .message-content h1,
+        .message-content h2,
+        .message-content h3,
+        .message-content h4,
+        .message-content h5,
+        .message-content h6 {
+            margin: 8px 0 4px 0;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .message-content h1 { font-size: 18px; }
+        .message-content h2 { font-size: 16px; }
+        .message-content h3 { font-size: 15px; }
+        .message-content h4 { font-size: 14px; }
+        .message-content h5 { font-size: 13px; }
+        .message-content h6 { font-size: 12px; }
+
+        .message-content p {
+            margin: 4px 0;
+        }
+
+        .message-content ul,
+        .message-content ol {
+            margin: 4px 0;
+            padding-left: 20px;
+        }
+
+        .message-content li {
+            margin: 2px 0;
+        }
+
+        .message-content blockquote {
+            border-left: 3px solid var(--focus-border-color, #007aff);
+            padding-left: 12px;
+            margin: 8px 0;
+            color: var(--description-color, rgba(255, 255, 255, 0.7));
+            font-style: italic;
+        }
+
+        .message-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+        }
+
+        .message-content pre {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .message-content pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .message-content table {
+            border-collapse: collapse;
+            margin: 8px 0;
+            width: 100%;
+            font-size: 12px;
+        }
+
+        .message-content th,
+        .message-content td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        .message-content th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .message-content a {
+            color: var(--focus-border-color, #007aff);
+            text-decoration: none;
+        }
+
+        .message-content a:hover {
+            text-decoration: underline;
+        }
+
+        .message-content strong {
+            font-weight: 600;
+        }
+
+        .message-content em {
+            font-style: italic;
+        }
+
+        .message-content hr {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 12px 0;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .message-content pre:hover .copy-button {
+            opacity: 1;
+        }
+
+        .copy-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         .message.user .message-content {
             background: var(--focus-border-color, #007aff);
             color: white;
@@ -132,6 +264,41 @@ export class LLMChatView extends LitElement {
 
         .message.assistant .message-time {
             text-align: left;
+        }
+
+        .provider-selector-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: var(--card-background, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+            border-radius: 6px;
+        }
+
+        .provider-selector-label {
+            font-size: 12px;
+            color: var(--description-color);
+            white-space: nowrap;
+        }
+
+        .provider-selector {
+            flex: 1;
+            background: var(--input-background);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .provider-selector:focus {
+            outline: none;
+            border-color: var(--focus-border-color);
+            box-shadow: 0 0 0 2px var(--focus-shadow);
         }
 
         .chat-input-container {
@@ -281,6 +448,8 @@ export class LLMChatView extends LitElement {
         sessionId: { type: String },
         isConnected: { type: Boolean },
         onBackClick: { type: Function },
+        configuredProviders: { type: Array },
+        selectedProviderKey: { type: String },
     };
 
     constructor() {
@@ -295,8 +464,11 @@ export class LLMChatView extends LitElement {
         this.isConnected = false;
         this.onBackClick = () => {};
         this.backendUrl = 'http://localhost:5000';
+        this.configuredProviders = [];
+        this.selectedProviderKey = '';
         
         this.loadChatHistory();
+        this.loadConfiguredProviders();
         this.checkBackendConnection();
     }
 
@@ -352,8 +524,44 @@ export class LLMChatView extends LitElement {
         }
     }
 
+    loadConfiguredProviders() {
+        import('../../utils/llmConfig.js').then(module => {
+            const { LLMConfigManager } = module;
+            this.configuredProviders = LLMConfigManager.getConfiguredProviders();
+            
+            // Set default provider if none selected
+            if (!this.selectedProviderKey && this.configuredProviders.length > 0) {
+                this.selectedProviderKey = this.configuredProviders[0].key;
+                this.updateCurrentProviderInfo();
+            }
+            
+            this.requestUpdate();
+        });
+    }
+
+    updateCurrentProviderInfo() {
+        const selectedConfig = this.configuredProviders.find(p => p.key === this.selectedProviderKey);
+        if (selectedConfig) {
+            this.currentProvider = selectedConfig.provider;
+            this.currentModel = selectedConfig.model;
+        }
+    }
+
+    handleProviderSelection(e) {
+        this.selectedProviderKey = e.target.value;
+        this.updateCurrentProviderInfo();
+        this.requestUpdate();
+    }
+
     async sendMessage(message) {
         if (!message.trim() || this.isLoading || !this.isConnected) return;
+
+        // Check if a provider is selected
+        if (!this.selectedProviderKey) {
+            this.errorMessage = 'Please select an AI provider before sending a message';
+            this.requestUpdate();
+            return;
+        }
 
         this.isLoading = true;
         this.errorMessage = '';
@@ -377,7 +585,8 @@ export class LLMChatView extends LitElement {
                 },
                 body: JSON.stringify({
                     message: message,
-                    session_id: this.sessionId
+                    session_id: this.sessionId,
+                    provider_key: this.selectedProviderKey
                 })
             });
 
@@ -440,12 +649,86 @@ export class LLMChatView extends LitElement {
     }
 
     renderMessage(message) {
+        const content = message.role === 'assistant' 
+            ? this.renderMarkdown(message.content)
+            : message.content;
+            
         return html`
             <div class="message ${message.role}">
-                <div class="message-content">${message.content}</div>
+                <div class="message-content">${content}</div>
                 <div class="message-time">${this.formatTime(message.timestamp)}</div>
             </div>
         `;
+    }
+
+    renderMarkdown(content) {
+        if (typeof marked === 'undefined') {
+            return content; // Fallback to plain text if marked is not available
+        }
+
+        // Configure marked with syntax highlighting
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (err) {
+                        console.warn('Syntax highlighting failed:', err);
+                    }
+                }
+                return code;
+            },
+            breaks: true,
+            gfm: true
+        });
+
+        try {
+            const htmlContent = marked.parse(content);
+            return this.unsafeHTML(htmlContent);
+        } catch (error) {
+            console.error('Markdown parsing failed:', error);
+            return content; // Fallback to plain text
+        }
+    }
+
+    unsafeHTML(htmlString) {
+        // Create a template element to safely parse HTML
+        const template = document.createElement('template');
+        template.innerHTML = htmlString;
+        
+        // Add copy buttons to code blocks
+        const preElements = template.content.querySelectorAll('pre');
+        preElements.forEach((pre, index) => {
+            const copyButton = document.createElement('button');
+            copyButton.className = 'copy-button';
+            copyButton.textContent = 'Copy';
+            copyButton.onclick = () => this.copyCodeBlock(pre.querySelector('code'));
+            pre.style.position = 'relative';
+            pre.appendChild(copyButton);
+        });
+
+        return template.content;
+    }
+
+    async copyCodeBlock(codeElement) {
+        if (!codeElement) return;
+        
+        try {
+            const text = codeElement.textContent || codeElement.innerText;
+            await navigator.clipboard.writeText(text);
+            
+            // Show feedback
+            const button = codeElement.parentElement.querySelector('.copy-button');
+            if (button) {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Failed to copy code:', error);
+        }
     }
 
     renderChatMessages() {
@@ -506,6 +789,21 @@ export class LLMChatView extends LitElement {
                 <div class="chat-messages">
                     ${this.renderChatMessages()}
                 </div>
+
+                ${this.configuredProviders.length > 1 ? html`
+                    <div class="provider-selector-container">
+                        <span class="provider-selector-label">AI Provider:</span>
+                        <select 
+                            class="provider-selector"
+                            .value=${this.selectedProviderKey}
+                            @change=${this.handleProviderSelection}
+                        >
+                            ${this.configuredProviders.map(provider => html`
+                                <option value="${provider.key}">${provider.name}</option>
+                            `)}
+                        </select>
+                    </div>
+                ` : ''}
 
                 <div class="chat-input-container">
                     <textarea

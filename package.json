@@ -1,11 +1,13 @@
 {
-    "name": "personal PA",
+    "name": "personal-pa",
     "productName": "personal PA",
     "version": "0.4.0",
     "description": "Frontend-only stealth application",
     "main": "src/index.js",
     "scripts": {
-        "start": "electron-forge start",
+        "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+        "start:frontend": "electron-forge start",
+        "start:backend": "cd backend && python app.py",
         "package": "electron-forge package",
         "make": "electron-forge make",
         "publish": "electron-forge publish",
@@ -37,6 +39,7 @@
         "@reforged/maker-appimage": "^5.0.0",
         "vitest": "^1.6.1",
         "jsdom": "^23.2.0",
-        "electron": "^30.0.5"
+        "electron": "^30.0.5",
+        "concurrently": "^8.2.2"
     }
 }

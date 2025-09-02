@@ -8,6 +8,7 @@ import { OnboardingView } from '../views/OnboardingView.js';
 import { AdvancedView } from '../views/AdvancedView.js';
 import { LLMConfigView } from '../views/LLMConfigView.js';
 import { LLMChatView } from '../views/LLMChatView.js';
+import { LLMConfigManager } from '../../utils/llmConfig.js';
 
 export class PersonalPaApp extends LitElement {
     static styles = css`
@@ -123,6 +124,9 @@ export class PersonalPaApp extends LitElement {
         this._isClickThrough = false;
         this.llmChatConfig = null;
         this.updateLayoutMode();
+        
+        // Auto-configure LLM backend if configuration exists
+        this.initializeLLMConfig();
     }
 
     setStatus(text) {
@@ -153,6 +157,39 @@ export class PersonalPaApp extends LitElement {
     handleLLMChatClick() {
         this.currentView = 'llm-config';
         this.requestUpdate();
+    }
+
+    async handleDirectChatClick() {
+        // Load stored configs and go directly to chat
+        const storedConfigs = LLMConfigManager.getStoredConfigs();
+        const configKeys = Object.keys(storedConfigs);
+        
+        if (configKeys.length > 0) {
+            // Use the first available config or let user choose in chat
+            const firstConfigKey = configKeys[0];
+            const firstConfig = storedConfigs[firstConfigKey];
+            
+            // Configure backend if needed (sync all configs)
+            const result = await LLMConfigManager.syncConfigsWithBackend();
+            if (result.success) {
+                this.llmChatConfig = {
+                    provider: firstConfig.provider,
+                    model: firstConfig.model,
+                    sessionId: 'default',
+                    availableProviders: configKeys
+                };
+                this.currentView = 'llm-chat';
+                this.requestUpdate();
+            } else {
+                this.setStatus('❌ Failed to configure AI - check settings');
+                this.currentView = 'llm-config';
+                this.requestUpdate();
+            }
+        } else {
+            // No config found, go to configuration
+            this.currentView = 'llm-config';
+            this.requestUpdate();
+        }
     }
 
     handleLLMConfigComplete(config) {
@@ -217,9 +254,40 @@ export class PersonalPaApp extends LitElement {
         }
     }
 
+    async handleHideToggle() {
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('toggle-window-visibility');
+        }
+    }
+
+    // LLM Configuration initialization
+    async initializeLLMConfig() {
+        try {
+            const result = await LLMConfigManager.autoConfigureOnStartup();
+            if (result.success) {
+                this.setStatus(`✅ AI configured: ${result.provider} (${result.model})`);
+                console.log('LLM backend auto-configured successfully');
+            } else {
+                if (result.reason === 'no_config') {
+                    console.log('No stored LLM configuration found - user will need to configure during onboarding');
+                } else if (result.reason === 'backend_unavailable') {
+                    this.setStatus('⚠️ AI backend not available - start backend server');
+                } else {
+                    this.setStatus('⚠️ AI configuration failed - check settings');
+                }
+            }
+        } catch (error) {
+            console.error('Error during LLM initialization:', error);
+            this.setStatus('⚠️ AI initialization error');
+        }
+    }
+
     // Onboarding event handlers
     handleOnboardingComplete() {
         this.currentView = 'main';
+        // Try to initialize LLM config after onboarding completion
+        this.initializeLLMConfig();
     }
 
     updated(changedProperties) {
@@ -256,6 +324,7 @@ export class PersonalPaApp extends LitElement {
                     <main-view
                         .onLayoutModeChange=${layoutMode => this.handleLayoutModeChange(layoutMode)}
                         .onLLMChatClick=${() => this.handleLLMChatClick()}
+                        .onDirectChatClick=${() => this.handleDirectChatClick()}
                     ></main-view>
                 `;
             case 'customize':

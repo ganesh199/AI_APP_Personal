@@ -182,7 +182,7 @@ export class AppHeader extends LitElement {
             advanced: 'Advanced Tools',
             assistant: 'personal PA',
         };
-        return titles[this.currentView] || 'Cheating Daddy';
+        return titles[this.currentView] || 'personal PA';
     }
 
     getElapsedTime() {
