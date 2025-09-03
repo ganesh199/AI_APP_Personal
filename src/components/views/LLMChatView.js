@@ -109,6 +109,138 @@ export class LLMChatView extends LitElement {
             cursor: text;
         }
 
+        /* Markdown styling */
+        .message-content h1,
+        .message-content h2,
+        .message-content h3,
+        .message-content h4,
+        .message-content h5,
+        .message-content h6 {
+            margin: 8px 0 4px 0;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .message-content h1 { font-size: 18px; }
+        .message-content h2 { font-size: 16px; }
+        .message-content h3 { font-size: 15px; }
+        .message-content h4 { font-size: 14px; }
+        .message-content h5 { font-size: 13px; }
+        .message-content h6 { font-size: 12px; }
+
+        .message-content p {
+            margin: 4px 0;
+        }
+
+        .message-content ul,
+        .message-content ol {
+            margin: 4px 0;
+            padding-left: 20px;
+        }
+
+        .message-content li {
+            margin: 2px 0;
+        }
+
+        .message-content blockquote {
+            border-left: 3px solid var(--focus-border-color, #007aff);
+            padding-left: 12px;
+            margin: 8px 0;
+            color: var(--description-color, rgba(255, 255, 255, 0.7));
+            font-style: italic;
+        }
+
+        .message-content code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+        }
+
+        .message-content pre {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .message-content pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .message-content table {
+            border-collapse: collapse;
+            margin: 8px 0;
+            width: 100%;
+            font-size: 12px;
+        }
+
+        .message-content th,
+        .message-content td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        .message-content th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .message-content a {
+            color: var(--focus-border-color, #007aff);
+            text-decoration: none;
+        }
+
+        .message-content a:hover {
+            text-decoration: underline;
+        }
+
+        .message-content strong {
+            font-weight: 600;
+        }
+
+        .message-content em {
+            font-style: italic;
+        }
+
+        .message-content hr {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 12px 0;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-color);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .message-content pre:hover .copy-button {
+            opacity: 1;
+        }
+
+        .copy-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         .message.user .message-content {
             background: var(--focus-border-color, #007aff);
             color: white;
@@ -132,6 +264,41 @@ export class LLMChatView extends LitElement {
 
         .message.assistant .message-time {
             text-align: left;
+        }
+
+        .provider-selector-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: var(--card-background, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+            border-radius: 6px;
+        }
+
+        .provider-selector-label {
+            font-size: 12px;
+            color: var(--description-color);
+            white-space: nowrap;
+        }
+
+        .provider-selector {
+            flex: 1;
+            background: var(--input-background);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .provider-selector:focus {
+            outline: none;
+            border-color: var(--focus-border-color);
+            box-shadow: 0 0 0 2px var(--focus-shadow);
         }
 
         .chat-input-container {
@@ -269,6 +436,124 @@ export class LLMChatView extends LitElement {
         .status-dot.disconnected {
             background: var(--danger-color, #ef4444);
         }
+
+        .file-upload-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .upload-button {
+            background: var(--card-background, rgba(255, 255, 255, 0.04));
+            color: var(--text-color);
+            border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+        }
+
+        .upload-button:hover {
+            background: var(--hover-background);
+            border-color: var(--focus-border-color);
+        }
+
+        .upload-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .uploaded-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .file-chip {
+            background: var(--card-background, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+            border-radius: 16px;
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-color);
+            max-width: 200px;
+        }
+
+        .file-chip-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        .file-chip-size {
+            color: var(--description-color);
+            font-size: 10px;
+        }
+
+        .file-chip-remove {
+            background: none;
+            border: none;
+            color: var(--description-color);
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .file-chip-remove:hover {
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
+        }
+
+        .file-type-icon {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+        }
+
+        .message-files {
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .message-file-chip {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .message.user .message-file-chip {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .file-size {
+            opacity: 0.7;
+        }
     `;
 
     static properties = {
@@ -281,22 +566,29 @@ export class LLMChatView extends LitElement {
         sessionId: { type: String },
         isConnected: { type: Boolean },
         onBackClick: { type: Function },
+        configuredProviders: { type: Array },
+        selectedProviderKey: { type: String },
+        uploadedFiles: { type: Array },
     };
 
     constructor() {
         super();
         this.currentView = 'chat';
-        this.chatHistory = [];
+        this.chatHistory = []; // Always start with empty chat
         this.isLoading = false;
         this.errorMessage = '';
         this.currentProvider = '';
         this.currentModel = '';
-        this.sessionId = 'default';
+        this.sessionId = this.generateSessionId(); // Generate new session ID each time
         this.isConnected = false;
         this.onBackClick = () => {};
         this.backendUrl = 'http://localhost:5000';
+        this.configuredProviders = [];
+        this.selectedProviderKey = '';
+        this.uploadedFiles = [];
         
-        this.loadChatHistory();
+        // Don't load old chat history - start fresh
+        this.loadConfiguredProviders();
         this.checkBackendConnection();
     }
 
@@ -322,24 +614,15 @@ export class LLMChatView extends LitElement {
         this.requestUpdate();
     }
 
+    generateSessionId() {
+        // Generate a unique session ID based on timestamp
+        return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
     loadChatHistory() {
-        try {
-            const savedHistory = localStorage.getItem(`llm_chat_history_${this.sessionId}`);
-            if (savedHistory) {
-                this.chatHistory = JSON.parse(savedHistory);
-            }
-            
-            const savedProvider = localStorage.getItem(`llm_provider_${this.sessionId}`);
-            const savedModel = localStorage.getItem(`llm_model_${this.sessionId}`);
-            
-            if (savedProvider && savedModel) {
-                this.currentProvider = savedProvider;
-                this.currentModel = savedModel;
-            }
-        } catch (error) {
-            console.error('Error loading chat history:', error);
-            this.chatHistory = [];
-        }
+        // This method is kept for compatibility but doesn't load old history
+        // Chat always starts fresh now
+        this.chatHistory = [];
     }
 
     saveChatHistory() {
@@ -352,8 +635,44 @@ export class LLMChatView extends LitElement {
         }
     }
 
+    loadConfiguredProviders() {
+        import('../../utils/llmConfig.js').then(module => {
+            const { LLMConfigManager } = module;
+            this.configuredProviders = LLMConfigManager.getConfiguredProviders();
+            
+            // Set default provider if none selected
+            if (!this.selectedProviderKey && this.configuredProviders.length > 0) {
+                this.selectedProviderKey = this.configuredProviders[0].key;
+                this.updateCurrentProviderInfo();
+            }
+            
+            this.requestUpdate();
+        });
+    }
+
+    updateCurrentProviderInfo() {
+        const selectedConfig = this.configuredProviders.find(p => p.key === this.selectedProviderKey);
+        if (selectedConfig) {
+            this.currentProvider = selectedConfig.provider;
+            this.currentModel = selectedConfig.model;
+        }
+    }
+
+    handleProviderSelection(e) {
+        this.selectedProviderKey = e.target.value;
+        this.updateCurrentProviderInfo();
+        this.requestUpdate();
+    }
+
     async sendMessage(message) {
         if (!message.trim() || this.isLoading || !this.isConnected) return;
+
+        // Check if a provider is selected
+        if (!this.selectedProviderKey) {
+            this.errorMessage = 'Please select an AI provider before sending a message';
+            this.requestUpdate();
+            return;
+        }
 
         this.isLoading = true;
         this.errorMessage = '';
@@ -362,7 +681,8 @@ export class LLMChatView extends LitElement {
         const userMessage = {
             role: 'user',
             content: message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            files: this.uploadedFiles.length > 0 ? [...this.uploadedFiles] : undefined
         };
         
         this.chatHistory = [...this.chatHistory, userMessage];
@@ -370,15 +690,21 @@ export class LLMChatView extends LitElement {
         this.requestUpdate();
 
         try {
+            // Prepare form data for file uploads
+            const formData = new FormData();
+            formData.append('message', message);
+            formData.append('session_id', this.sessionId);
+            formData.append('provider_key', this.selectedProviderKey);
+            
+            // Add files to form data
+            this.uploadedFiles.forEach((file, index) => {
+                formData.append(`file_${index}`, file);
+            });
+            formData.append('file_count', this.uploadedFiles.length.toString());
+
             const response = await fetch(`${this.backendUrl}/api/chat`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: message,
-                    session_id: this.sessionId
-                })
+                body: formData // Use FormData instead of JSON for file uploads
             });
 
             const result = await response.json();
@@ -395,6 +721,9 @@ export class LLMChatView extends LitElement {
                 
                 this.chatHistory = [...this.chatHistory, aiMessage];
                 this.saveChatHistory();
+                
+                // Clear uploaded files after sending
+                this.uploadedFiles = [];
             } else {
                 this.errorMessage = result.error || 'Failed to get response from AI';
             }
@@ -440,21 +769,175 @@ export class LLMChatView extends LitElement {
     }
 
     renderMessage(message) {
+        const content = message.role === 'assistant' 
+            ? this.renderMarkdown(message.content)
+            : message.content;
+            
         return html`
             <div class="message ${message.role}">
-                <div class="message-content">${message.content}</div>
+                <div class="message-content">${content}</div>
+                ${message.files && message.files.length > 0 ? html`
+                    <div class="message-files">
+                        ${message.files.map(file => html`
+                            <div class="message-file-chip">
+                                <span>${this.getFileTypeIcon(file.type)}</span>
+                                <span>${file.name}</span>
+                                <span class="file-size">(${this.formatFileSize(file.size)})</span>
+                            </div>
+                        `)}
+                    </div>
+                ` : ''}
                 <div class="message-time">${this.formatTime(message.timestamp)}</div>
             </div>
         `;
+    }
+
+    renderMarkdown(content) {
+        if (typeof marked === 'undefined') {
+            return content; // Fallback to plain text if marked is not available
+        }
+
+        // Configure marked with syntax highlighting
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                    try {
+                        return hljs.highlight(code, { language: lang }).value;
+                    } catch (err) {
+                        console.warn('Syntax highlighting failed:', err);
+                    }
+                }
+                return code;
+            },
+            breaks: true,
+            gfm: true
+        });
+
+        try {
+            const htmlContent = marked.parse(content);
+            return this.unsafeHTML(htmlContent);
+        } catch (error) {
+            console.error('Markdown parsing failed:', error);
+            return content; // Fallback to plain text
+        }
+    }
+
+    unsafeHTML(htmlString) {
+        // Create a template element to safely parse HTML
+        const template = document.createElement('template');
+        template.innerHTML = htmlString;
+        
+        // Add copy buttons to code blocks
+        const preElements = template.content.querySelectorAll('pre');
+        preElements.forEach((pre, index) => {
+            const copyButton = document.createElement('button');
+            copyButton.className = 'copy-button';
+            copyButton.textContent = 'Copy';
+            copyButton.onclick = () => this.copyCodeBlock(pre.querySelector('code'));
+            pre.style.position = 'relative';
+            pre.appendChild(copyButton);
+        });
+
+        return template.content;
+    }
+
+    async copyCodeBlock(codeElement) {
+        if (!codeElement) return;
+        
+        try {
+            const text = codeElement.textContent || codeElement.innerText;
+            await navigator.clipboard.writeText(text);
+            
+            // Show feedback
+            const button = codeElement.parentElement.querySelector('.copy-button');
+            if (button) {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                }, 2000);
+            }
+        } catch (error) {
+            console.error('Failed to copy code:', error);
+        }
+    }
+
+    handleUploadClick() {
+        const fileInput = this.shadowRoot.querySelector('.file-input');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        const maxFileSize = 50 * 1024 * 1024; // 50MB limit
+        const maxFiles = 5; // Maximum 5 files
+        
+        // Filter out files that are too large or exceed limit
+        const validFiles = files.filter(file => {
+            if (file.size > maxFileSize) {
+                this.errorMessage = `File "${file.name}" is too large. Maximum size is 50MB.`;
+                return false;
+            }
+            return true;
+        });
+        
+        // Check total file count
+        if (this.uploadedFiles.length + validFiles.length > maxFiles) {
+            this.errorMessage = `Maximum ${maxFiles} files allowed. Please remove some files first.`;
+            return;
+        }
+        
+        // Add files to uploaded files array
+        this.uploadedFiles = [...this.uploadedFiles, ...validFiles];
+        this.errorMessage = ''; // Clear any previous errors
+        
+        // Clear the input so the same file can be selected again
+        e.target.value = '';
+        
+        this.requestUpdate();
+    }
+
+    removeFile(index) {
+        this.uploadedFiles = this.uploadedFiles.filter((_, i) => i !== index);
+        this.requestUpdate();
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    getFileTypeIcon(mimeType) {
+        if (mimeType.startsWith('image/')) {
+            return '🖼️';
+        } else if (mimeType.startsWith('audio/')) {
+            return '🎵';
+        } else if (mimeType.startsWith('video/')) {
+            return '🎥';
+        } else if (mimeType.includes('pdf')) {
+            return '📄';
+        } else if (mimeType.includes('word') || mimeType.includes('document')) {
+            return '📝';
+        } else if (mimeType.includes('text')) {
+            return '📃';
+        } else {
+            return '📎';
+        }
     }
 
     renderChatMessages() {
         if (this.chatHistory.length === 0) {
             return html`
                 <div class="empty-state">
-                    <div class="empty-state-title">Start a conversation</div>
+                    <div class="empty-state-title">Start a fresh conversation</div>
                     <div class="empty-state-description">
-                        Type a message below to begin chatting with ${this.currentProvider || 'the AI'}
+                        Type a message below to begin a new chat with ${this.currentProvider || 'the AI'}<br>
+                        <small style="margin-top: 8px; display: block; font-size: 10px;">Previous conversations are saved in Chat History</small>
                     </div>
                 </div>
             `;
@@ -507,7 +990,59 @@ export class LLMChatView extends LitElement {
                     ${this.renderChatMessages()}
                 </div>
 
+                ${this.configuredProviders.length > 1 ? html`
+                    <div class="provider-selector-container">
+                        <span class="provider-selector-label">AI Provider:</span>
+                        <select 
+                            class="provider-selector"
+                            .value=${this.selectedProviderKey}
+                            @change=${this.handleProviderSelection}
+                        >
+                            ${this.configuredProviders.map(provider => html`
+                                <option value="${provider.key}">${provider.name}</option>
+                            `)}
+                        </select>
+                    </div>
+                ` : ''}
+
+                ${this.uploadedFiles.length > 0 ? html`
+                    <div class="uploaded-files">
+                        ${this.uploadedFiles.map((file, index) => html`
+                            <div class="file-chip">
+                                <div class="file-type-icon">${this.getFileTypeIcon(file.type)}</div>
+                                <div class="file-chip-name" title="${file.name}">${file.name}</div>
+                                <div class="file-chip-size">${this.formatFileSize(file.size)}</div>
+                                <button class="file-chip-remove" @click=${() => this.removeFile(index)}>
+                                    <svg width="10px" height="10px" stroke-width="2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        `)}
+                    </div>
+                ` : ''}
+
                 <div class="chat-input-container">
+                    <div class="file-upload-container">
+                        <button 
+                            class="upload-button" 
+                            @click=${this.handleUploadClick}
+                            ?disabled=${this.isLoading || !this.isConnected}
+                            title="Upload file"
+                        >
+                            <svg width="16px" height="16px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 5V19" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M5 12H19" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                        </button>
+                        <input 
+                            type="file" 
+                            class="file-input" 
+                            @change=${this.handleFileSelect}
+                            multiple
+                            accept=".pdf,.doc,.docx,.txt,.md,.jpg,.jpeg,.png,.gif,.bmp,.webp,.mp3,.wav,.mp4,.avi,.mov"
+                        >
+                    </div>
                     <textarea
                         class="chat-input"
                         placeholder="Type your message... (Enter to send, Shift+Enter for new line)"

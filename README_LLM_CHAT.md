@@ -1,10 +1,16 @@
-# Multi-LLM Chat Integration
+# Personal PA - AI-Powered Assistant
 
-This document explains how to use the new Multi-LLM Chat feature integrated into your Personal PA application.
+A stealth desktop application with advanced AI chat capabilities, file upload support, and screenshot analysis features.
 
 ## Overview
 
-The Multi-LLM Chat feature allows you to chat with different AI providers through a unified interface, similar to the Streamlit example you provided, but integrated into your existing Electron frontend.
+Personal PA is an Electron-based desktop application that provides:
+- **Multi-LLM Chat**: Chat with different AI providers (OpenAI, Google Gemini, Anthropic, OpenRouter, Local Ollama)
+- **File Upload Support**: Upload documents, images, audio, and video files for AI analysis
+- **Screenshot Analysis**: Capture and analyze screenshots with Ctrl+Enter shortcut
+- **Chat History**: Browse and manage conversation history
+- **Stealth Mode**: Toggle stealth features for privacy
+- **Customizable Interface**: Adjustable layouts and keyboard shortcuts
 
 ## Supported LLM Providers
 
@@ -40,13 +46,20 @@ python start_backend.py
 
 The backend will start on `http://localhost:5000`
 
-### 2. Access Multi-LLM Chat
+### 2. Configure AI Providers
 
-1. Open your Personal PA application
-2. From the main view, click "🤖 Start Multi-LLM Chat"
-3. Select your preferred LLM provider
-4. Configure the provider with your API key and settings
-5. Start chatting!
+1. Complete onboarding to configure your first AI provider
+2. Or go to Settings to add multiple providers
+3. Supported providers: OpenAI, Google Gemini, Anthropic, OpenRouter, Local Ollama
+4. Each provider requires an API key (except local Ollama)
+
+### 3. Start Using Features
+
+1. **Chat**: Click "🤖 Start Multi-LLM Chat" from main view
+2. **Files**: Use "+" button in chat to upload files for analysis
+3. **Screenshots**: Press Ctrl+Enter anywhere to capture and analyze
+4. **History**: Click book icon to browse past conversations
+5. **Stealth**: Click shield icon to toggle stealth mode
 
 ## Configuration
 
@@ -71,14 +84,80 @@ The backend will start on `http://localhost:5000`
 - **Base URL**: URL where Ollama is running (default: http://localhost:11434)
 - **Model**: Choose from locally installed models
 
-## Features
+## Key Features
 
+### 🤖 Multi-LLM Chat
 - **Multiple Provider Support**: Switch between different AI providers
-- **Chat History**: Conversations are saved locally
+- **Provider Selection**: Choose from configured providers in chat interface
 - **Session Management**: Multiple chat sessions with different providers
 - **Real-time Communication**: Fast communication with backend server
-- **Error Handling**: Comprehensive error messages and connection status
-- **Responsive Design**: Fits seamlessly into your existing UI
+
+### 📁 File Upload & Analysis
+- **Multi-file Support**: Upload up to 5 files per message (max 50MB each)
+- **Supported Formats**: Documents (.pdf, .doc, .docx, .txt, .md), Images (.jpg, .png, .gif, etc.), Audio (.mp3, .wav), Video (.mp4, .avi, .mov)
+- **File Preview**: View uploaded files as removable chips before sending
+- **AI Integration**: Files are processed and included in AI context
+
+### 📸 Screenshot Analysis
+- **Ctrl+Enter Shortcut**: Instantly capture and send screenshots to AI
+- **Auto-navigation**: Automatically switches to LLM chat view
+- **Default Analysis**: Sends screenshot with "Please analyze this screenshot" prompt
+- **Customizable Keybind**: Modify shortcut in settings (default: Ctrl+Enter/Cmd+Enter)
+
+### 📚 Chat History
+- **Session Storage**: All conversations saved locally
+- **History Browser**: Dedicated view to browse past conversations
+- **Session Details**: View provider, model, date, and message count
+- **Delete Options**: Remove individual sessions or clear all history
+
+### 🛡️ Stealth Mode
+- **Toggle Button**: Shield icon in header to enable/disable stealth
+- **Anti-Analysis**: Applies stealth measures when enabled
+- **Privacy Features**: Enhanced privacy and security measures
+
+### ⚙️ Customization
+- **Keyboard Shortcuts**: Customize all keybinds in settings
+- **Layout Modes**: Normal and compact layouts
+- **Advanced Mode**: Additional tools and features
+- **Responsive Design**: Fits seamlessly into desktop environment
+
+## Quick Start
+
+### 1. First Launch
+1. Complete the onboarding process
+2. Configure at least one AI provider with API key
+3. Choose your preferred settings
+
+### 2. Using AI Chat
+1. Click "🤖 Start Multi-LLM Chat" from main view
+2. Select provider from dropdown (if multiple configured)
+3. Type your message or upload files
+4. Press Enter to send
+
+### 3. Screenshot Analysis
+1. Press **Ctrl+Enter** anywhere in the app
+2. Screenshot is automatically captured and sent to AI
+3. View AI analysis in the chat interface
+
+### 4. File Upload
+1. In LLM chat, click the "+" button
+2. Select up to 5 files (documents, images, audio, video)
+3. Files appear as chips - remove unwanted ones
+4. Send message with files for AI analysis
+
+## Keyboard Shortcuts
+
+| Action | Windows/Linux | Mac | Description |
+|--------|---------------|-----|-------------|
+| Screenshot & Send | Ctrl+Enter | Cmd+Enter | Capture screenshot and send to AI |
+| Toggle Visibility | Ctrl+\ | Cmd+\ | Show/hide application window |
+| Toggle Click-through | Ctrl+M | Cmd+M | Enable/disable click-through mode |
+| Move Window | Ctrl+Arrow | Alt+Arrow | Move application window |
+| Previous Response | Ctrl+[ | Cmd+[ | Navigate to previous AI response |
+| Next Response | Ctrl+] | Cmd+] | Navigate to next AI response |
+| Scroll Response | Ctrl+Shift+↑/↓ | Cmd+Shift+↑/↓ | Scroll AI response content |
+
+*All shortcuts are customizable in Settings*
 
 ## API Endpoints
 
@@ -86,7 +165,8 @@ The backend provides these REST API endpoints:
 
 - `GET /api/providers` - Get available LLM providers
 - `POST /api/configure` - Configure LLM provider  
-- `POST /api/chat` - Send chat message
+- `POST /api/configure-multiple` - Configure multiple providers
+- `POST /api/chat` - Send chat message (supports file uploads)
 - `GET /api/history/<session_id>` - Get chat history
 - `GET /api/sessions` - Get all sessions
 - `DELETE /api/clear/<session_id>` - Clear session
@@ -116,12 +196,55 @@ The backend provides these REST API endpoints:
 - Chat history is stored locally in your browser
 - No data is sent to external servers except for AI API calls
 
+## File Structure
+
+```
+d:\AI-PA\
+├── backend/
+│   ├── app.py              # FastAPI backend server
+│   ├── requirements.txt    # Python dependencies
+│   └── start_backend.py    # Backend startup script
+├── src/
+│   ├── components/
+│   │   ├── app/
+│   │   │   ├── PersonalPaApp.js    # Main application component
+│   │   │   └── AppHeader.js        # Header with stealth toggle
+│   │   └── views/
+│   │       ├── LLMChatView.js      # Multi-LLM chat interface
+│   │       ├── ChatHistoryView.js  # Chat history browser
+│   │       ├── MainView.js         # Main dashboard
+│   │       └── CustomizeView.js    # Settings and keybinds
+│   ├── utils/
+│   │   ├── llmConfig.js     # LLM configuration management
+│   │   ├── renderer.js      # Electron renderer utilities
+│   │   └── window.js        # Window and shortcut management
+│   └── index.js             # Electron main process
+├── package.json
+└── README_LLM_CHAT.md
+```
+
 ## Development
 
-To modify or extend the LLM chat functionality:
+### Adding New Features
+1. **Backend**: Edit `backend/app.py` to add new providers or API endpoints
+2. **Frontend**: Create new view components in `src/components/views/`
+3. **Configuration**: Extend LLM configuration in `src/utils/llmConfig.js`
+4. **Shortcuts**: Add new keybinds in `src/utils/window.js`
 
-1. **Backend**: Edit `backend/app.py` to add new providers or modify API handling
-2. **Frontend**: Edit the LLM view components in `src/components/views/`
-3. **Configuration**: Modify provider configurations in the backend
+### Running in Development
+```bash
+# Start both frontend and backend
+npm start
 
-The system is designed to be easily extensible for additional LLM providers.
+# Or start individually:
+npm run start:frontend  # Electron app
+npm run start:backend   # Python backend
+```
+
+### Building
+```bash
+npm run package  # Package for current platform
+npm run make     # Create installer
+```
+
+The system is designed to be easily extensible for additional LLM providers, file types, and features.

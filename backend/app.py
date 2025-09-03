@@ -9,11 +9,16 @@ import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 import logging
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import requests
 import uvicorn
+import base64
+import mimetypes
+from pathlib import Path
+import tempfile
+import shutil
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,8 +36,9 @@ app.add_middleware(
 )
 
 # Global storage for configurations and chat sessions
-llm_configs = {}
+llm_configs = {}  # Store by provider_key instead of session_id
 chat_sessions = {}
+provider_configs = {}  # Store multiple provider configurations
 
 # Define LLM providers configuration
 LLM_PROVIDERS = {
@@ -48,7 +54,7 @@ LLM_PROVIDERS = {
         "api_key": True,
         "base_url": False,
         "model_name": True,
-        "models": ["gemini-pro", "gemini-pro-vision", "gemini-1.5-pro"],
+        "models": ["gemini-pro", "gemini-pro-vision", "gemini-1.5-pro", "gemini-2.5-flash"],
         "description": "Google's Gemini AI models",
         "default_base_url": "https://generativelanguage.googleapis.com/v1beta"
     },
@@ -61,7 +67,8 @@ LLM_PROVIDERS = {
             "openai/gpt-4",
             "anthropic/claude-2",
             "meta-llama/llama-2-70b-chat",
-            "mistralai/mistral-7b-instruct"
+            "mistralai/mistral-7b-instruct",
+            "deepseek/deepseek-chat-v3.1:free"
         ],
         "description": "Unified access to multiple models",
         "default_base_url": "https://openrouter.ai/api/v1"
@@ -93,10 +100,12 @@ class ConfigureRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
+    provider_key: str = Field(..., description="Key of the configured provider")
+    files: Optional[List[Dict[str, Any]]] = None
 
 class ChatResponse(BaseModel):
     success: bool
-    response: Optional[str] = None
+    response: Optional[str] = None 
     provider: Optional[str] = None
     model: Optional[str] = None
     session_id: Optional[str] = None
@@ -318,6 +327,41 @@ async def get_providers():
     """Get list of available LLM providers"""
     return LLM_PROVIDERS
 
+@app.post("/api/configure-multiple")
+async def configure_multiple_providers(providers: Dict[str, Dict[str, Any]]):
+    """Configure multiple LLM providers from frontend"""
+    try:
+        configured_count = 0
+        
+        for provider_key, provider_data in providers.items():
+            provider = provider_data.get('provider')
+            config = {
+                'api_key': provider_data.get('apiKey'),
+                'model_name': provider_data.get('model')
+            }
+            
+            if provider and provider in LLM_PROVIDERS:
+                # Create LLM client
+                client = create_llm_client(provider, config)
+                if client:
+                    provider_configs[provider_key] = {
+                        "provider": provider,
+                        "config": config,
+                        "client": client,
+                        "created_at": datetime.now().isoformat()
+                    }
+                    configured_count += 1
+        
+        return {
+            "success": True,
+            "configured_count": configured_count,
+            "message": f"Configured {configured_count} providers"
+        }
+        
+    except Exception as e:
+        logger.error(f"Multiple configuration error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/configure")
 async def configure_llm(request: ConfigureRequest):
     """Configure LLM provider"""
@@ -346,13 +390,19 @@ async def configure_llm(request: ConfigureRequest):
         if not client:
             raise HTTPException(status_code=500, detail="Failed to create LLM client")
         
-        # Store configuration
-        llm_configs[session_id] = {
+        # Create provider key
+        provider_key = f"{provider}_{config.get('model_name')}"
+        
+        # Store configuration by provider key
+        provider_configs[provider_key] = {
             "provider": provider,
             "config": config,
             "client": client,
             "created_at": datetime.now().isoformat()
         }
+        
+        # Store legacy session-based config for backward compatibility
+        llm_configs[session_id] = provider_configs[provider_key]
         
         # Initialize chat session
         if session_id not in chat_sessions:
@@ -362,7 +412,8 @@ async def configure_llm(request: ConfigureRequest):
             "success": True,
             "provider": provider,
             "model": config.get("model_name"),
-            "session_id": session_id
+            "session_id": session_id,
+            "provider_key": provider_key
         }
         
     except HTTPException:
@@ -371,37 +422,105 @@ async def configure_llm(request: ConfigureRequest):
         logger.error(f"Configuration error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+@app.post("/api/chat")
+async def chat_endpoint(
+    message: str = Form(...),
+    session_id: str = Form(default="default"),
+    provider_key: str = Form(...),
+    file_count: int = Form(default=0),
+    files: List[UploadFile] = File(default=[])
+):
     """Send message to configured LLM"""
     try:
-        message = request.message.strip()
-        session_id = request.session_id
-        
         if not message:
             raise HTTPException(status_code=400, detail="Message is required")
         
-        if session_id not in llm_configs:
-            raise HTTPException(status_code=400, detail="LLM not configured for this session")
+        # Determine which provider config to use
+        llm_info = None
+        if provider_key and provider_key in provider_configs:
+            # Use specific provider
+            llm_info = provider_configs[provider_key]
+        elif session_id in llm_configs:
+            # Fallback to session-based config
+            llm_info = llm_configs[session_id]
+        else:
+            raise HTTPException(status_code=400, detail="No LLM provider configured")
         
-        # Get LLM client
-        llm_info = llm_configs[session_id]
         client = llm_info["client"]
         
         # Get chat history
         if session_id not in chat_sessions:
             chat_sessions[session_id] = []
         
+        # Process uploaded files if any
+        file_contents = []
+        if files and len(files) > 0:
+            for file in files:
+                if file.filename:  # Check if file is actually uploaded
+                    try:
+                        # Read file content
+                        content = await file.read()
+                        file_info = {
+                            "name": file.filename,
+                            "type": file.content_type,
+                            "size": len(content)
+                        }
+                        
+                        # Process different file types
+                        if file.content_type.startswith('text/') or file.filename.endswith(('.txt', '.md', '.py', '.js', '.html', '.css')):
+                            # Text files - include content directly
+                            try:
+                                text_content = content.decode('utf-8')
+                                file_info["content"] = text_content[:10000]  # Limit to 10k chars
+                            except UnicodeDecodeError:
+                                file_info["content"] = "[Binary file - content not readable as text]"
+                        elif file.content_type.startswith('image/'):
+                            # Images - encode as base64 for vision models
+                            file_info["content"] = base64.b64encode(content).decode('utf-8')
+                            file_info["base64"] = True
+                        else:
+                            # Other files - just note the file type
+                            file_info["content"] = f"[{file.content_type} file: {file.filename}]"
+                        
+                        file_contents.append(file_info)
+                    except Exception as e:
+                        logger.error(f"Error processing file {file.filename}: {e}")
+                        file_contents.append({
+                            "name": file.filename,
+                            "type": file.content_type,
+                            "content": f"[Error reading file: {str(e)}]"
+                        })
+        
+        # Prepare enhanced message with file context
+        enhanced_message = message
+        if file_contents:
+            enhanced_message += "\n\nAttached files:\n"
+            for file_info in file_contents:
+                enhanced_message += f"\n--- {file_info['name']} ({file_info['type']}) ---\n"
+                if file_info.get('base64'):
+                    enhanced_message += "[Image content - please analyze this image]\n"
+                else:
+                    enhanced_message += file_info['content'][:5000] + ("..." if len(file_info['content']) > 5000 else "")
+                enhanced_message += "\n--- End of file ---\n"
+        
         # Add user message to history
-        chat_sessions[session_id].append({
+        user_message = {
             "role": "user",
             "content": message,
             "timestamp": datetime.now().isoformat()
-        })
+        }
+        if file_contents:
+            user_message["files"] = file_contents
+        
+        chat_sessions[session_id].append(user_message)
         
         # Prepare messages for LLM (last 10 messages to avoid token limits)
         messages = [{"role": msg["role"], "content": msg["content"]} 
                    for msg in chat_sessions[session_id][-10:]]
+        
+        # Use enhanced message for the latest user message if files are present
+        if file_contents and messages:
+            messages[-1]["content"] = enhanced_message
         
         # Generate response
         response = await client.generate_response(messages)
@@ -500,9 +619,9 @@ async def health_check():
     )
 
 if __name__ == '__main__':
-    print("🚀 Starting Multi-LLM Chat Backend Server...")
-    print("📡 Server will be available at: http://localhost:5000")
-    print("🔗 API endpoints:")
+    print("[INFO] Starting Multi-LLM Chat Backend Server...")
+    print("[INFO] Server will be available at: http://localhost:5000")
+    print("[INFO] API endpoints:")
     print("   GET  /api/providers - Get available LLM providers")
     print("   POST /api/configure - Configure LLM provider")
     print("   POST /api/chat - Send chat message")

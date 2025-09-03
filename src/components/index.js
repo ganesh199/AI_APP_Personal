@@ -12,3 +12,4 @@ export { OnboardingView } from './views/OnboardingView.js';
 export { AdvancedView } from './views/AdvancedView.js';
 export { LLMConfigView } from './views/LLMConfigView.js';
 export { LLMChatView } from './views/LLMChatView.js';
+export { ChatHistoryView } from './views/ChatHistoryView.js';

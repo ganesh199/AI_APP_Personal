@@ -205,11 +205,207 @@ export class OnboardingView extends LitElement {
             background: rgba(255, 255, 255, 0.8);
             transform: scale(1.2);
         }
+
+        .llm-config-section {
+            margin-bottom: 24px;
+        }
+
+        .configured-providers {
+            margin-bottom: 32px;
+        }
+
+        .configured-providers h3,
+        .add-provider-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 16px;
+        }
+
+        .provider-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .provider-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .provider-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .provider-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .provider-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #e5e5e5;
+        }
+
+        .provider-status {
+            font-size: 12px;
+            color: #22c55e;
+        }
+
+        .remove-provider-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .remove-provider-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .no-providers {
+            font-size: 14px;
+            color: #888;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .add-provider-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 24px;
+        }
+
+        .provider-selector,
+        .model-selector {
+            margin-bottom: 16px;
+        }
+
+        .provider-selector label,
+        .model-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #e5e5e5;
+        }
+
+        .provider-select,
+        .model-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e5e5e5;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .provider-select:focus,
+        .model-select:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .api-key-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #e5e5e5;
+            font-size: 14px;
+            font-family: inherit;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .api-key-input:focus {
+            outline: none;
+            border-color: #007aff;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+
+        .api-key-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .add-provider-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 16px;
+        }
+
+        .add-provider-btn:hover:not(:disabled) {
+            background: #0056b3;
+        }
+
+        .add-provider-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .config-note {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+            line-height: 1.4;
+        }
+            background: rgba(255, 255, 255, 0.05);
+            color: #e5e5e5;
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .model-select:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .config-note {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 8px;
+            line-height: 1.4;
+        }
     `;
 
     static properties = {
         currentSlide: { type: Number },
         contextText: { type: String },
+        selectedProvider: { type: String },
+        apiKey: { type: String },
+        selectedModel: { type: String },
+        customModel: { type: String },
+        showCustomModel: { type: Boolean },
+        configuredProviders: { type: Array },
         onComplete: { type: Function },
         onClose: { type: Function },
     };
@@ -218,11 +414,20 @@ export class OnboardingView extends LitElement {
         super();
         this.currentSlide = 0;
         this.contextText = '';
+        this.selectedProvider = '';
+        this.apiKey = '';
+        this.selectedModel = '';
+        this.customModel = '';
+        this.showCustomModel = false;
+        this.configuredProviders = [];
         this.onComplete = () => {};
         this.onClose = () => {};
         this.canvas = null;
         this.ctx = null;
         this.animationId = null;
+        
+        // Load configured providers on initialization
+        this.loadConfiguredProviders();
 
         // Transition properties
         this.isTransitioning = false;
@@ -259,7 +464,16 @@ export class OnboardingView extends LitElement {
                 [35, 35, 35], // Lighter dark
                 [10, 10, 10], // Almost black
             ],
-            // Slide 4 - Features (Dark green-gray)
+            // Slide 4 - LLM Config (Dark teal)
+            [
+                [15, 30, 30], // Dark teal
+                [10, 25, 25], // Darker teal
+                [20, 35, 35], // Slightly teal
+                [5, 20, 20], // Very dark teal
+                [25, 40, 40], // Muted teal
+                [0, 15, 15], // Almost black
+            ],
+            // Slide 5 - Features (Dark green-gray)
             [
                 [20, 30, 25], // Dark green-gray
                 [15, 25, 20], // Darker green-gray
@@ -268,7 +482,7 @@ export class OnboardingView extends LitElement {
                 [30, 40, 35], // Muted green
                 [5, 15, 10], // Almost black
             ],
-            // Slide 5 - Complete (Dark warm gray)
+            // Slide 6 - Complete (Dark warm gray)
             [
                 [30, 25, 20], // Dark warm gray
                 [25, 20, 15], // Darker warm
@@ -385,7 +599,7 @@ export class OnboardingView extends LitElement {
     }
 
     nextSlide() {
-        if (this.currentSlide < 4) {
+        if (this.currentSlide < 5) {
             this.startColorTransition(this.currentSlide + 1);
         } else {
             this.completeOnboarding();
@@ -426,10 +640,185 @@ export class OnboardingView extends LitElement {
         this.contextText = e.target.value;
     }
 
-    completeOnboarding() {
+    handleProviderChange(e) {
+        this.selectedProvider = e.target.value;
+        this.apiKey = '';
+        this.selectedModel = '';
+    }
+
+    handleApiKeyInput(e) {
+        this.apiKey = e.target.value;
+    }
+
+    handleModelChange(e) {
+        const value = e.target.value;
+        if (value === 'other') {
+            this.showCustomModel = true;
+            this.selectedModel = this.customModel || '';
+        } else {
+            this.showCustomModel = false;
+            this.selectedModel = value;
+            this.customModel = '';
+        }
+        this.requestUpdate();
+    }
+
+    handleCustomModelInput(e) {
+        this.customModel = e.target.value;
+        this.selectedModel = e.target.value;
+    }
+
+    loadConfiguredProviders() {
+        // Import LLMConfigManager dynamically to avoid circular imports
+        import('../../utils/llmConfig.js').then(module => {
+            const { LLMConfigManager } = module;
+            this.configuredProviders = LLMConfigManager.getConfiguredProviders();
+            this.requestUpdate();
+        });
+    }
+
+    canAddProvider() {
+        if (!this.selectedProvider || !this.selectedModel) {
+            return false;
+        }
+        
+        // Check if API key is required and provided
+        const providers = this.getAvailableProviders();
+        const providerInfo = providers[this.selectedProvider];
+        
+        if (providerInfo?.requiresApiKey && !this.apiKey.trim()) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    async addProvider() {
+        if (!this.canAddProvider()) return;
+        
+        try {
+            // Import LLMConfigManager dynamically
+            const { LLMConfigManager } = await import('../../utils/llmConfig.js');
+            
+            // Add the provider configuration
+            const success = LLMConfigManager.addProviderConfig(
+                this.selectedProvider,
+                this.apiKey,
+                this.selectedModel
+            );
+            
+            if (success) {
+                // Reset form
+                this.selectedProvider = '';
+                this.apiKey = '';
+                this.selectedModel = '';
+                
+                // Reload configured providers
+                this.loadConfiguredProviders();
+                
+                // Show success feedback (optional)
+                console.log('Provider added successfully');
+            } else {
+                console.error('Failed to add provider');
+            }
+        } catch (error) {
+            console.error('Error adding provider:', error);
+        }
+    }
+
+    async removeProvider(configKey) {
+        try {
+            // Import LLMConfigManager dynamically
+            const { LLMConfigManager } = await import('../../utils/llmConfig.js');
+            
+            // Remove the provider configuration
+            const success = LLMConfigManager.removeProviderConfig(configKey);
+            
+            if (success) {
+                // Reload configured providers
+                this.loadConfiguredProviders();
+                console.log('Provider removed successfully');
+            } else {
+                console.error('Failed to remove provider');
+            }
+        } catch (error) {
+            console.error('Error removing provider:', error);
+        }
+    }
+
+    getAvailableProviders() {
+        return {
+            'OpenAI': {
+                name: 'OpenAI',
+                models: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o'],
+                placeholder: 'Enter your OpenAI API key (sk-...)'
+            },
+            'Google Gemini': {
+                name: 'Google Gemini',
+                models: ['gemini-pro', 'gemini-pro-vision', 'gemini-1.5-pro', 'gemini-2.5-flash'],
+                placeholder: 'Enter your Google AI Studio API key'
+            },
+            'Anthropic': {
+                name: 'Anthropic',
+                models: ['claude-3-sonnet', 'claude-3-opus', 'claude-3-haiku'],
+                placeholder: 'Enter your Anthropic API key'
+            },
+            'OpenRouter': {
+                name: 'OpenRouter',
+                models: ['openai/gpt-3.5-turbo', 'openai/gpt-4', 'anthropic/claude-2', 'deepseek/deepseek-chat-v3.1:free'],
+                placeholder: 'Enter your OpenRouter API key'
+            },
+            'Local Ollama': {
+                name: 'Local Ollama',
+                models: ['llama2', 'mistral', 'codellama', 'phi'],
+                placeholder: 'No API key required for local models'
+            }
+        };
+    }
+
+    async completeOnboarding() {
+        // Store context if provided
         if (this.contextText.trim()) {
             localStorage.setItem('customPrompt', this.contextText.trim());
         }
+
+        // Store LLM configuration if provided
+        if (this.selectedProvider && (this.apiKey || this.selectedProvider === 'Local Ollama')) {
+            const llmConfig = {
+                provider: this.selectedProvider,
+                apiKey: this.apiKey,
+                model: this.selectedModel,
+                configuredAt: new Date().toISOString()
+            };
+
+            // Store in secure local storage
+            localStorage.setItem('llmConfig', JSON.stringify(llmConfig));
+
+            // Configure the backend with the API key
+            try {
+                const response = await fetch('http://localhost:5000/api/configure', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        provider: this.selectedProvider,
+                        config: {
+                            api_key: this.apiKey,
+                            model_name: this.selectedModel
+                        },
+                        session_id: 'default'
+                    })
+                });
+
+                if (!response.ok) {
+                    console.warn('Failed to configure backend, but continuing with onboarding');
+                }
+            } catch (error) {
+                console.warn('Backend not available during onboarding, configuration will be applied later');
+            }
+        }
+
         localStorage.setItem('onboardingCompleted', 'true');
         this.onComplete();
     }
@@ -455,6 +844,12 @@ export class OnboardingView extends LitElement {
             },
             {
                 icon: 'assets/onboarding/customize.svg',
+                title: 'Configure AI Provider',
+                content: 'Choose your preferred AI provider and add your API key to get started.',
+                showLLMConfig: true,
+            },
+            {
+                icon: 'assets/onboarding/customize.svg',
                 title: 'Additional Features',
                 content: '',
                 showFeatures: true,
@@ -462,7 +857,7 @@ export class OnboardingView extends LitElement {
             {
                 icon: 'assets/onboarding/ready.svg',
                 title: 'Ready to Go',
-                content: 'Add your Gemini API key in settings and start getting AI-powered assistance in real-time.',
+                content: 'Your AI assistant is configured and ready to help you in real-time.',
             },
         ];
 
@@ -489,6 +884,108 @@ export class OnboardingView extends LitElement {
                                   .value=${this.contextText}
                                   @input=${this.handleContextInput}
                               ></textarea>
+                          `
+                        : ''}
+                    ${slide.showLLMConfig
+                        ? html`
+                              <div class="llm-config-section">
+                                  <div class="configured-providers">
+                                      <h3>Configured AI Providers</h3>
+                                      ${this.configuredProviders.length > 0 
+                                          ? html`
+                                              <div class="provider-list">
+                                                  ${this.configuredProviders.map(config => html`
+                                                      <div class="provider-item">
+                                                          <div class="provider-info">
+                                                              <span class="provider-name">${config.name}</span>
+                                                              <span class="provider-status">✓ Configured</span>
+                                                          </div>
+                                                          <button 
+                                                              class="remove-provider-btn"
+                                                              @click=${() => this.removeProvider(config.key)}
+                                                          >Remove</button>
+                                                      </div>
+                                                  `)}
+                                              </div>
+                                          `
+                                          : html`<p class="no-providers">No AI providers configured yet.</p>`
+                                      }
+                                  </div>
+
+                                  <div class="add-provider-section">
+                                      <h3>Add New AI Provider</h3>
+                                      <div class="provider-selector">
+                                          <label for="provider-select">Choose AI Provider:</label>
+                                          <select 
+                                              id="provider-select" 
+                                              class="provider-select" 
+                                              .value=${this.selectedProvider}
+                                              @change=${this.handleProviderChange}
+                                          >
+                                              <option value="">Select a provider...</option>
+                                              ${Object.entries(this.getAvailableProviders()).map(([key, provider]) => 
+                                                  html`<option value="${key}">${provider.name}</option>`
+                                              )}
+                                          </select>
+                                      </div>
+                                      
+                                      ${this.selectedProvider ? html`
+                                          <input
+                                              type="password"
+                                              class="api-key-input"
+                                              placeholder="${this.getAvailableProviders()[this.selectedProvider]?.placeholder || 'Enter API key'}"
+                                              .value=${this.apiKey}
+                                              @input=${this.handleApiKeyInput}
+                                              ?disabled=${this.selectedProvider === 'Local Ollama'}
+                                          />
+                                          
+                                          <div class="model-selector">
+                                              <label for="model-select">Choose Model:</label>
+                                              <select 
+                                                  id="model-select" 
+                                                  class="model-select" 
+                                                  .value=${this.selectedModel === this.customModel ? 'other' : (this.selectedModel || '')}
+                                                  @change=${this.handleModelChange}
+                                              >
+                                                  <option value="">Select a model...</option>
+                                                  ${this.getAvailableProviders()[this.selectedProvider]?.models.map(model => 
+                                                      html`<option value="${model}">${model}</option>`
+                                                  )}
+                                                  <option value="other">Other (custom model)</option>
+                                              </select>
+                                          </div>
+                                          
+                                          ${this.showCustomModel ? html`
+                                              <div class="custom-model-input">
+                                                  <label for="custom-model">Custom Model Name:</label>
+                                                  <input
+                                                      id="custom-model"
+                                                      type="text"
+                                                      class="api-key-input"
+                                                      placeholder="Enter custom model name (e.g., gpt-4-turbo-preview)"
+                                                      .value=${this.customModel}
+                                                      @input=${this.handleCustomModelInput}
+                                                  />
+                                              </div>
+                                          ` : ''}
+                                          
+                                          <button 
+                                              class="add-provider-btn"
+                                              @click=${this.addProvider}
+                                              ?disabled=${!this.canAddProvider()}
+                                          >
+                                              Add Provider
+                                          </button>
+                                          
+                                          <div class="config-note">
+                                              ${this.selectedProvider === 'Local Ollama' 
+                                                  ? 'Make sure Ollama is running on your system before proceeding.'
+                                                  : 'Your API key will be stored securely on your device and never shared.'
+                                              }
+                                          </div>
+                                      ` : ''}
+                                  </div>
+                              </div>
                           `
                         : ''}
                     ${slide.showFeatures
@@ -519,7 +1016,7 @@ export class OnboardingView extends LitElement {
                     </button>
 
                     <div class="progress-dots">
-                        ${[0, 1, 2, 3, 4].map(
+                        ${[0, 1, 2, 3, 4, 5].map(
                             index => html`
                                 <div
                                     class="dot ${index === this.currentSlide ? 'active' : ''}"
@@ -534,7 +1031,7 @@ export class OnboardingView extends LitElement {
                     </div>
 
                     <button class="nav-button" @click=${this.nextSlide}>
-                        ${this.currentSlide === 4
+                        ${this.currentSlide === 5
                             ? 'Get Started'
                             : html`
                                   <svg width="16px" height="16px" stroke-width="2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

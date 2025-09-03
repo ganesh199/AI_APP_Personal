@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
+import { LLMConfigManager } from '../../utils/llmConfig.js';
 
 export class MainView extends LitElement {
     static styles = css`
@@ -77,19 +78,77 @@ export class MainView extends LitElement {
         .action-button.secondary:hover {
             background: var(--hover-background);
         }
+
+        .llm-status {
+            background: rgba(0, 122, 255, 0.1);
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .llm-status-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #007aff;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .llm-status-details {
+            font-size: 14px;
+            color: var(--description-color);
+            line-height: 1.4;
+        }
+
+        .llm-provider {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .no-llm-config {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .no-llm-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffc107;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     `;
 
     static properties = {
         onLayoutModeChange: { type: Function },
         onLLMChatClick: { type: Function },
+        onDirectChatClick: { type: Function },
+        onChatHistoryClick: { type: Function },
+        llmConfig: { type: Object },
     };
 
     constructor() {
         super();
         this.onLayoutModeChange = () => {};
         this.onLLMChatClick = () => {};
+        this.onDirectChatClick = () => {};
+        this.onChatHistoryClick = () => {};
+        this.llmConfig = null;
         this.loadLayoutMode();
+        this.loadLLMConfig();
         resizeLayout();
+    }
+
+    loadLLMConfig() {
+        this.llmConfig = LLMConfigManager.getStoredConfig();
     }
 
     loadLayoutMode() {
@@ -105,6 +164,30 @@ export class MainView extends LitElement {
             <p class="description">
                 This is a frontend-only application with stealth capabilities. 
             </p>
+            
+            ${this.llmConfig ? html`
+                <div class="llm-status">
+                    <div class="llm-status-title">
+                        <span>🤖</span>
+                        AI Assistant Ready
+                    </div>
+                    <div class="llm-status-details">
+                        Provider: <span class="llm-provider">${this.llmConfig.provider}</span><br>
+                        Model: <span class="llm-provider">${this.llmConfig.model}</span><br>
+                        Configured: ${new Date(this.llmConfig.configuredAt || this.llmConfig.updatedAt).toLocaleDateString()}
+                    </div>
+                </div>
+            ` : html`
+                <div class="no-llm-config">
+                    <div class="no-llm-title">
+                        <span>⚠️</span>
+                        AI Assistant Not Configured
+                    </div>
+                    <div class="llm-status-details">
+                        Configure your AI provider to start chatting with your assistant.
+                    </div>
+                </div>
+            `}
             
             <div class="feature-list">
                 <div class="feature-item">
@@ -123,16 +206,24 @@ export class MainView extends LitElement {
                     <span class="feature-icon">🎨</span>
                     <span>Adjustable interface layout</span>
                 </div>
-                <div class="feature-item">
-                    <span class="feature-icon">🤖</span>
-                    <span>Multi-LLM chat support</span>
-                </div>
             </div>
             
             <div class="action-buttons">
-                <button class="action-button" @click=${this.onLLMChatClick}>
-                    🤖 Start Multi-LLM Chat
-                </button>
+                ${this.llmConfig ? html`
+                    <button class="action-button" @click=${this.onDirectChatClick}>
+                        💬 Start New Chat with ${this.llmConfig.provider}
+                    </button>
+                    <button class="action-button secondary" @click=${this.onChatHistoryClick}>
+                        📚 View Chat History
+                    </button>
+                    <button class="action-button secondary" @click=${this.onLLMChatClick}>
+                        🔧 Change AI Provider
+                    </button>
+                ` : html`
+                    <button class="action-button" @click=${this.onLLMChatClick}>
+                        🤖 Configure AI Assistant
+                    </button>
+                `}
             </div>
         `;
     }
