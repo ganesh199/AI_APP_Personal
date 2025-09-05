@@ -8,6 +8,8 @@ import { OnboardingView } from '../views/OnboardingView.js';
 import { AdvancedView } from '../views/AdvancedView.js';
 import { LLMConfigView } from '../views/LLMConfigView.js';
 import { LLMChatView } from '../views/LLMChatView.js';
+import { ChatHistoryView } from '../views/ChatHistoryView.js';
+import { LLMConfigManager } from '../../utils/llmConfig.js';
 
 export class PersonalPaApp extends LitElement {
     static styles = css`
@@ -122,8 +124,14 @@ export class PersonalPaApp extends LitElement {
         this.advancedMode = localStorage.getItem('advancedMode') === 'true';
         this._isClickThrough = false;
         this.llmChatConfig = null;
+        this.stealthMode = localStorage.getItem('stealthMode') === 'true';
         this.updateLayoutMode();
+        
+        // Auto-configure LLM backend if configuration exists
+        this.initializeLLMConfig();
+        
     }
+
 
     setStatus(text) {
         this.statusText = text;
@@ -140,10 +148,25 @@ export class PersonalPaApp extends LitElement {
         this.requestUpdate();
     }
 
+    handleStealthToggle() {
+        this.stealthMode = !this.stealthMode;
+        localStorage.setItem('stealthMode', this.stealthMode.toString());
+        
+        // Apply stealth settings via IPC
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            ipcRenderer.invoke('set-stealth-mode', this.stealthMode);
+        }
+        
+        this.setStatus(this.stealthMode ? '🛡️ Stealth mode enabled' : '👁️ Stealth mode disabled');
+        this.requestUpdate();
+    }
+
     handleHistoryClick() {
         this.currentView = 'history';
         this.requestUpdate();
     }
+
 
     handleAdvancedClick() {
         this.currentView = 'advanced';
@@ -153,6 +176,39 @@ export class PersonalPaApp extends LitElement {
     handleLLMChatClick() {
         this.currentView = 'llm-config';
         this.requestUpdate();
+    }
+
+    async handleDirectChatClick() {
+        // Load stored configs and go directly to chat
+        const storedConfigs = LLMConfigManager.getStoredConfigs();
+        const configKeys = Object.keys(storedConfigs);
+        
+        if (configKeys.length > 0) {
+            // Use the first available config or let user choose in chat
+            const firstConfigKey = configKeys[0];
+            const firstConfig = storedConfigs[firstConfigKey];
+            
+            // Configure backend if needed (sync all configs)
+            const result = await LLMConfigManager.syncConfigsWithBackend();
+            if (result.success) {
+                this.llmChatConfig = {
+                    provider: firstConfig.provider,
+                    model: firstConfig.model,
+                    sessionId: 'default',
+                    availableProviders: configKeys
+                };
+                this.currentView = 'llm-chat';
+                this.requestUpdate();
+            } else {
+                this.setStatus('❌ Failed to configure AI - check settings');
+                this.currentView = 'llm-config';
+                this.requestUpdate();
+            }
+        } else {
+            // No config found, go to configuration
+            this.currentView = 'llm-config';
+            this.requestUpdate();
+        }
     }
 
     handleLLMConfigComplete(config) {
@@ -217,9 +273,142 @@ export class PersonalPaApp extends LitElement {
         }
     }
 
+    async handleHideToggle() {
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            await ipcRenderer.invoke('toggle-window-visibility');
+        }
+    }
+
+    // LLM Configuration initialization
+    async initializeLLMConfig() {
+        try {
+            const result = await LLMConfigManager.autoConfigureOnStartup();
+            if (result.success) {
+                this.setStatus(`✅ AI configured: ${result.provider} (${result.model})`);
+                console.log('LLM backend auto-configured successfully');
+            } else {
+                if (result.reason === 'no_config') {
+                    console.log('No stored LLM configuration found - user will need to configure during onboarding');
+                } else if (result.reason === 'backend_unavailable') {
+                    this.setStatus('⚠️ AI backend not available - start backend server');
+                } else {
+                    this.setStatus('⚠️ AI configuration failed - check settings');
+                }
+            }
+        } catch (error) {
+            console.error('Error during LLM initialization:', error);
+            this.setStatus('⚠️ AI initialization error');
+        }
+    }
+
+
+    async handleScreenshotAndSend() {
+        try {
+            // Check if LLM is configured
+            const storedConfigs = await import('../../utils/llmConfig.js').then(module => {
+                const { LLMConfigManager } = module;
+                return LLMConfigManager.getStoredConfigs();
+            });
+            
+            const configKeys = Object.keys(storedConfigs);
+            if (configKeys.length === 0) {
+                this.setStatus('❌ Configure AI first to use screenshot feature');
+                return;
+            }
+
+            this.setStatus('📸 Taking screenshot...');
+            
+            // Take screenshot using Electron API
+            if (window.require) {
+                const { ipcRenderer } = window.require('electron');
+                try {
+                    const screenshot = await ipcRenderer.invoke('take-screenshot');
+                    
+                    if (screenshot) {
+                        this.setStatus('🤖 Sending to AI...');
+                        
+                        // Convert screenshot to file-like object
+                        const response = await fetch(screenshot);
+                        const blob = await response.blob();
+                        const file = new File([blob], 'screenshot.png', { type: 'image/png' });
+                        
+                        // Navigate to LLM chat and send screenshot
+                        await this.sendScreenshotToLLM(file);
+                        
+                        this.setStatus('✅ Screenshot sent to AI');
+                        setTimeout(() => this.setStatus(''), 3000);
+                    } else {
+                        this.setStatus('❌ Failed to take screenshot');
+                        setTimeout(() => this.setStatus(''), 3000);
+                    }
+                } catch (error) {
+                    console.error('Screenshot error:', error);
+                    this.setStatus('❌ Screenshot failed');
+                    setTimeout(() => this.setStatus(''), 3000);
+                }
+            } else {
+                this.setStatus('❌ Screenshot not available in browser');
+                setTimeout(() => this.setStatus(''), 3000);
+            }
+        } catch (error) {
+            console.error('Screenshot and send error:', error);
+            this.setStatus('❌ Screenshot feature error');
+            setTimeout(() => this.setStatus(''), 3000);
+        }
+    }
+
+    async sendScreenshotToLLM(screenshotFile) {
+        try {
+            // Import LLM config manager
+            const { LLMConfigManager } = await import('../../utils/llmConfig.js');
+            const storedConfigs = LLMConfigManager.getStoredConfigs();
+            const configKeys = Object.keys(storedConfigs);
+            
+            if (configKeys.length > 0) {
+                // Configure backend if needed
+                const result = await LLMConfigManager.syncConfigsWithBackend();
+                if (result.success) {
+                    // Switch to LLM chat view
+                    const firstConfigKey = configKeys[0];
+                    const firstConfig = storedConfigs[firstConfigKey];
+                    
+                    this.llmChatConfig = {
+                        provider: firstConfig.provider,
+                        model: firstConfig.model,
+                        sessionId: 'screenshot_' + Date.now(),
+                        availableProviders: configKeys
+                    };
+                    
+                    this.currentView = 'llm-chat';
+                    this.requestUpdate();
+                    
+                    // Wait for the view to render, then send screenshot
+                    setTimeout(async () => {
+                        const chatView = this.shadowRoot.querySelector('llm-chat-view');
+                        if (chatView) {
+                            // Add screenshot to uploaded files
+                            chatView.uploadedFiles = [screenshotFile];
+                            chatView.requestUpdate();
+                            
+                            // Auto-send with default message
+                            const defaultMessage = "Please analyze this screenshot and tell me what you see.";
+                            await chatView.sendMessage(defaultMessage);
+                        }
+                    }, 100);
+                }
+            }
+        } catch (error) {
+            console.error('Error sending screenshot to LLM:', error);
+            throw error;
+        }
+    }
+
     // Onboarding event handlers
     handleOnboardingComplete() {
         this.currentView = 'main';
+        // Try to initialize LLM config after onboarding completion
+        this.initializeLLMConfig();
     }
 
     updated(changedProperties) {
@@ -256,6 +445,7 @@ export class PersonalPaApp extends LitElement {
                     <main-view
                         .onLayoutModeChange=${layoutMode => this.handleLayoutModeChange(layoutMode)}
                         .onLLMChatClick=${() => this.handleLLMChatClick()}
+                        .onDirectChatClick=${() => this.handleDirectChatClick()}
                     ></main-view>
                 `;
             case 'customize':
@@ -285,7 +475,6 @@ export class PersonalPaApp extends LitElement {
                 return html`
                     <llm-config-view
                         .onConfigComplete=${config => this.handleLLMConfigComplete(config)}
-                        .onBackClick=${() => this.handleBackClick()}
                     ></llm-config-view>
                 `;
             case 'llm-chat':
@@ -294,7 +483,6 @@ export class PersonalPaApp extends LitElement {
                         .currentProvider=${this.llmChatConfig?.provider || ''}
                         .currentModel=${this.llmChatConfig?.model || ''}
                         .sessionId=${this.llmChatConfig?.sessionId || 'default'}
-                        .onBackClick=${() => this.handleBackClick()}
                     ></llm-chat-view>
                 `;
             default:
@@ -313,10 +501,12 @@ export class PersonalPaApp extends LitElement {
                         .currentView=${this.currentView}
                         .statusText=${this.statusText}
                         .advancedMode=${this.advancedMode}
+                        .stealthMode=${this.stealthMode}
                         .onCustomizeClick=${() => this.handleCustomizeClick()}
                         .onHelpClick=${() => this.handleHelpClick()}
                         .onHistoryClick=${() => this.handleHistoryClick()}
                         .onAdvancedClick=${() => this.handleAdvancedClick()}
+                        .onStealthToggle=${() => this.handleStealthToggle()}
                         .onCloseClick=${() => this.handleClose()}
                         .onBackClick=${() => this.handleBackClick()}
                         .onHideToggleClick=${() => this.handleHideToggle()}

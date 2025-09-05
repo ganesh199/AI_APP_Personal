@@ -101,6 +101,8 @@ export class AppHeader extends LitElement {
         isClickThrough: { type: Boolean, reflect: true },
         advancedMode: { type: Boolean },
         onAdvancedClick: { type: Function },
+        stealthMode: { type: Boolean },
+        onStealthToggle: { type: Function },
     };
 
     constructor() {
@@ -117,6 +119,8 @@ export class AppHeader extends LitElement {
         this.isClickThrough = false;
         this.advancedMode = false;
         this.onAdvancedClick = () => {};
+        this.stealthMode = false;
+        this.onStealthToggle = () => {};
         this._timerInterval = null;
     }
 
@@ -181,8 +185,10 @@ export class AppHeader extends LitElement {
             history: 'Conversation History',
             advanced: 'Advanced Tools',
             assistant: 'personal PA',
+            'llm-config': 'AI Configuration',
+            'llm-chat': 'AI Chat',
         };
-        return titles[this.currentView] || 'Cheating Daddy';
+        return titles[this.currentView] || 'personal PA';
     }
 
     getElapsedTime() {
@@ -194,7 +200,7 @@ export class AppHeader extends LitElement {
     }
 
     isNavigationView() {
-        const navigationViews = ['customize', 'help', 'history', 'advanced'];
+        const navigationViews = ['customize', 'help', 'history', 'advanced', 'llm-config', 'llm-chat'];
         return navigationViews.includes(this.currentView);
     }
 
@@ -213,6 +219,18 @@ export class AppHeader extends LitElement {
                         : ''}
                     ${this.currentView === 'main'
                         ? html`
+                              <button class="icon-button" @click=${this.onStealthToggle} title="${this.stealthMode ? 'Stealth Mode ON' : 'Stealth Mode OFF'}">
+                                  ${this.stealthMode ? html`
+                                      <svg width="24px" height="24px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
+                                          <path d="M12 2 L20 8 L20 16 C20 20 16 22 12 22 C8 22 4 20 4 16 L4 8 Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                                          <path d="M8 12 Q12 14 16 12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                                      </svg>
+                                  ` : html`
+                                      <svg width="24px" height="24px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" color="currentColor">
+                                          <path d="M12 2 L20 8 L20 16 C20 20 16 22 12 22 C8 22 4 20 4 16 L4 8 Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"></path>
+                                      </svg>
+                                  `}
+                              </button>
                               <button class="icon-button" @click=${this.onHistoryClick}>
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
@@ -357,6 +375,25 @@ export class AppHeader extends LitElement {
                                       ></path>
                                   </svg>
                               </button>
+                              <button @click=${this.onCloseClick} class="icon-button window-close">
+                                  <?xml version="1.0" encoding="UTF-8"?><svg
+                                      width="24px"
+                                      height="24px"
+                                      stroke-width="1.7"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      color="currentColor"
+                                  >
+                                      <path
+                                          d="M6.75827 17.2426L12.0009 12M17.2435 6.75736L12.0009 12M12.0009 12L6.75827 6.75736M12.0009 12L17.2435 17.2426"
+                                          stroke="currentColor"
+                                          stroke-width="1.7"
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                      ></path>
+                                  </svg>
+                              </button>
                           `
                         : ''}
                     ${this.currentView === 'assistant'
@@ -385,8 +422,10 @@ export class AppHeader extends LitElement {
                                   </svg>
                               </button>
                           `
-                        : html`
-                              <button @click=${this.isNavigationView() ? this.onBackClick : this.onCloseClick} class="icon-button window-close">
+                        : ''}
+                    ${this.isNavigationView()
+                        ? html`
+                              <button @click=${this.onBackClick} class="icon-button window-close">
                                   <?xml version="1.0" encoding="UTF-8"?><svg
                                       width="24px"
                                       height="24px"
@@ -405,7 +444,8 @@ export class AppHeader extends LitElement {
                                       ></path>
                                   </svg>
                               </button>
-                          `}
+                          `
+                        : ''}
                 </div>
             </div>
         `;

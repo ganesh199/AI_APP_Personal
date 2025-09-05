@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
+import { ChatHistoryView } from './ChatHistoryView.js';
 
 export class HistoryView extends LitElement {
     static styles = css`
@@ -491,6 +492,12 @@ export class HistoryView extends LitElement {
         `;
     }
 
+    renderChatHistory() {
+        return html`
+            <chat-history-view></chat-history-view>
+        `;
+    }
+
     renderConversationView() {
         if (!this.selectedSession) return html``;
 
@@ -566,8 +573,13 @@ export class HistoryView extends LitElement {
                     <button class="tab ${this.activeTab === 'saved' ? 'active' : ''}" @click=${() => this.handleTabClick('saved')}>
                         Saved Responses (${this.savedResponses.length})
                     </button>
+                    <button class="tab ${this.activeTab === 'chat-history' ? 'active' : ''}" @click=${() => this.handleTabClick('chat-history')}>
+                        Chat History
+                    </button>
                 </div>
-                ${this.activeTab === 'sessions' ? this.renderSessionsList() : this.renderSavedResponses()}
+                ${this.activeTab === 'sessions' ? this.renderSessionsList() : 
+                  this.activeTab === 'saved' ? this.renderSavedResponses() : 
+                  this.renderChatHistory()}
             </div>
         `;
     }

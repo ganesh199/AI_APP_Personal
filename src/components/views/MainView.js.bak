@@ -131,6 +131,10 @@ export class MainView extends LitElement {
         onLayoutModeChange: { type: Function },
         onLLMChatClick: { type: Function },
         onDirectChatClick: { type: Function },
+<<<<<<< HEAD
+        onChatHistoryClick: { type: Function },
+=======
+>>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
         llmConfig: { type: Object },
     };
 
@@ -139,6 +143,10 @@ export class MainView extends LitElement {
         this.onLayoutModeChange = () => {};
         this.onLLMChatClick = () => {};
         this.onDirectChatClick = () => {};
+<<<<<<< HEAD
+        this.onChatHistoryClick = () => {};
+=======
+>>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
         this.llmConfig = null;
         this.loadLayoutMode();
         this.loadLLMConfig();
@@ -209,7 +217,14 @@ export class MainView extends LitElement {
             <div class="action-buttons">
                 ${this.llmConfig ? html`
                     <button class="action-button" @click=${this.onDirectChatClick}>
+<<<<<<< HEAD
                         💬 Start New Chat with ${this.llmConfig.provider}
+                    </button>
+                    <button class="action-button secondary" @click=${this.onChatHistoryClick}>
+                        📚 View Chat History
+=======
+                        💬 Start Chat with ${this.llmConfig.provider}
+>>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
                     </button>
                     <button class="action-button secondary" @click=${this.onLLMChatClick}>
                         🔧 Change AI Provider

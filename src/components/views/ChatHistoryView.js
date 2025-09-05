@@ -1,0 +1,473 @@
+import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
+import { resizeLayout } from '../../utils/windowResize.js';
+
+export class ChatHistoryView extends LitElement {
+    static styles = css`
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            cursor: default;
+            user-select: none;
+        }
+
+        :host {
+            display: block;
+            height: 100%;
+            width: 100%;
+        }
+
+        .history-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 12px;
+        }
+
+        .header {
+            background: var(--card-background, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+
+        .sessions-list {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--main-content-background);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .session-item {
+            background: var(--card-background, rgba(255, 255, 255, 0.04));
+            border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .session-item:hover {
+            background: var(--hover-background);
+            border-color: var(--focus-border-color);
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .session-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .session-date {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .session-provider {
+            font-size: 10px;
+            color: var(--description-color);
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-button {
+            background: transparent;
+            color: var(--description-color);
+            border: 1px solid var(--button-border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .action-button:hover {
+            background: var(--hover-background);
+            color: var(--text-color);
+        }
+
+        .action-button.delete:hover {
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
+            border-color: #ff4444;
+        }
+
+        .session-preview {
+            font-size: 11px;
+            color: var(--description-color);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .conversation-detail {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--main-content-background);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-content {
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.4;
+            user-select: text;
+            cursor: text;
+        }
+
+        .message.user .message-content {
+            background: var(--focus-border-color, #007aff);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: var(--card-background, rgba(255, 255, 255, 0.08));
+            color: var(--text-color);
+            border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+        }
+
+        .message-time {
+            font-size: 10px;
+            color: var(--description-color, rgba(255, 255, 255, 0.5));
+            padding: 0 4px;
+        }
+
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        .message.assistant .message-time {
+            text-align: left;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--description-color);
+        }
+
+        .empty-state-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .empty-state-description {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .clear-all-button {
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .clear-all-button:hover {
+            background: rgba(255, 0, 0, 0.2);
+            border-color: #ff4444;
+        }
+    `;
+
+    static properties = {
+        chatSessions: { type: Array },
+        selectedSession: { type: Object },
+    };
+
+    constructor() {
+        super();
+        this.chatSessions = [];
+        this.selectedSession = null;
+        this.loadChatSessions();
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        resizeLayout();
+    }
+
+    loadChatSessions() {
+        try {
+            // Get all chat sessions from localStorage
+            const sessions = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('llm_chat_history_')) {
+                    const sessionId = key.replace('llm_chat_history_', '');
+                    const historyData = localStorage.getItem(key);
+                    const providerData = localStorage.getItem(`llm_provider_${sessionId}`);
+                    const modelData = localStorage.getItem(`llm_model_${sessionId}`);
+                    
+                    if (historyData) {
+                        try {
+                            const history = JSON.parse(historyData);
+                            if (history.length > 0) {
+                                sessions.push({
+                                    id: sessionId,
+                                    history: history,
+                                    provider: providerData || 'Unknown',
+                                    model: modelData || 'Unknown',
+                                    lastMessage: history[history.length - 1],
+                                    messageCount: history.length
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Error parsing chat history for session:', sessionId, e);
+                        }
+                    }
+                }
+            }
+            
+            // Sort sessions by last message timestamp
+            this.chatSessions = sessions.sort((a, b) => 
+                new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp)
+            );
+        } catch (error) {
+            console.error('Error loading chat sessions:', error);
+            this.chatSessions = [];
+        }
+        this.requestUpdate();
+    }
+
+    formatDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+        });
+    }
+
+    formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    getSessionPreview(session) {
+        if (!session.history || session.history.length === 0) {
+            return 'No messages';
+        }
+        
+        const firstUserMessage = session.history.find(msg => msg.role === 'user');
+        if (firstUserMessage) {
+            const preview = firstUserMessage.content;
+            return preview.length > 80 ? preview.substring(0, 80) + '...' : preview;
+        }
+        
+        return 'No user messages';
+    }
+
+    handleSessionClick(session) {
+        this.selectedSession = session;
+        this.requestUpdate();
+    }
+
+    handleBackToSessions() {
+        this.selectedSession = null;
+        this.requestUpdate();
+    }
+
+    handleDeleteSession(sessionId, event) {
+        event.stopPropagation();
+        
+        if (confirm('Are you sure you want to delete this chat session?')) {
+            // Remove from localStorage
+            localStorage.removeItem(`llm_chat_history_${sessionId}`);
+            localStorage.removeItem(`llm_provider_${sessionId}`);
+            localStorage.removeItem(`llm_model_${sessionId}`);
+            
+            // Reload sessions
+            this.loadChatSessions();
+            
+            // If this was the selected session, go back to list
+            if (this.selectedSession && this.selectedSession.id === sessionId) {
+                this.selectedSession = null;
+            }
+        }
+    }
+
+    handleClearAllHistory() {
+        if (confirm('Are you sure you want to delete ALL chat history? This cannot be undone.')) {
+            // Remove all chat-related items from localStorage
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('llm_chat_history_') || 
+                           key.startsWith('llm_provider_') || 
+                           key.startsWith('llm_model_'))) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            // Reload sessions
+            this.loadChatSessions();
+            this.selectedSession = null;
+        }
+    }
+
+    renderMessage(message) {
+        return html`
+            <div class="message ${message.role}">
+                <div class="message-content">${message.content}</div>
+                <div class="message-time">${this.formatTime(message.timestamp)}</div>
+            </div>
+        `;
+    }
+
+    renderSessionDetail() {
+        if (!this.selectedSession) return html``;
+
+        return html`
+            <div class="history-container">
+                <div class="header">
+                    <div>
+                        <div class="header-title">Chat Session - ${this.formatDate(this.selectedSession.lastMessage.timestamp)}</div>
+                        <div style="font-size: 11px; color: var(--description-color); margin-top: 2px;">
+                            ${this.selectedSession.provider} • ${this.selectedSession.model} • ${this.selectedSession.messageCount} messages
+                        </div>
+                    </div>
+                    <button class="back-button" @click=${this.handleBackToSessions}>
+                        <svg width="16px" height="16px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                        </svg>
+                        Back to Sessions
+                    </button>
+                </div>
+
+                <div class="conversation-detail">
+                    ${this.selectedSession.history.map(message => this.renderMessage(message))}
+                </div>
+            </div>
+        `;
+    }
+
+    renderSessionsList() {
+        if (this.chatSessions.length === 0) {
+            return html`
+                <div class="empty-state">
+                    <div class="empty-state-title">No chat history</div>
+                    <div class="empty-state-description">
+                        Your LLM chat conversations will appear here once you start chatting
+                    </div>
+                </div>
+            `;
+        }
+
+        return html`
+            <div class="sessions-list">
+                ${this.chatSessions.map(session => html`
+                    <div class="session-item" @click=${() => this.handleSessionClick(session)}>
+                        <div class="session-header">
+                            <div class="session-info">
+                                <div class="session-date">${this.formatDate(session.lastMessage.timestamp)}</div>
+                                <div class="session-provider">${session.provider} • ${session.model} • ${session.messageCount} messages</div>
+                            </div>
+                            <div class="session-actions">
+                                <button class="action-button delete" 
+                                        @click=${(e) => this.handleDeleteSession(session.id, e)}
+                                        title="Delete session">
+                                    <svg width="12px" height="12px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="session-preview">${this.getSessionPreview(session)}</div>
+                    </div>
+                `)}
+            </div>
+        `;
+    }
+
+    render() {
+        if (this.selectedSession) {
+            return this.renderSessionDetail();
+        }
+
+        return html`
+            <div class="history-container">
+                <div class="header">
+                    <div class="header-title">Chat History</div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${this.chatSessions.length > 0 ? html`
+                            <button class="clear-all-button" @click=${this.handleClearAll}>
+                                <svg width="14px" height="14px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6 6L18 18M6 18L18 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
+                                </svg>
+                                Clear All
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+                ${this.renderSessionsList()}
+            </div>
+        `;
+    }
+}
+
+customElements.define('chat-history-view', ChatHistoryView);

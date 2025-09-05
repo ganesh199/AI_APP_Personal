@@ -100,8 +100,12 @@ class ConfigureRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
+<<<<<<< HEAD
     provider_key: str = Field(..., description="Key of the configured provider")
     files: Optional[List[Dict[str, Any]]] = None
+=======
+    provider_key: Optional[str] = None
+>>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
 
 class ChatResponse(BaseModel):
     success: bool
@@ -432,6 +436,13 @@ async def chat_endpoint(
 ):
     """Send message to configured LLM"""
     try:
+<<<<<<< HEAD
+=======
+        message = request.message.strip()
+        session_id = request.session_id
+        provider_key = request.provider_key
+        
+>>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
         if not message:
             raise HTTPException(status_code=400, detail="Message is required")
         

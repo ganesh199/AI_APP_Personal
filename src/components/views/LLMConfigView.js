@@ -1,5 +1,6 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 import { resizeLayout } from '../../utils/windowResize.js';
+import { LLMConfigManager } from '../../utils/llmConfig.js';
 
 export class LLMConfigView extends LitElement {
     static styles = css`
@@ -257,7 +258,6 @@ export class LLMConfigView extends LitElement {
         successMessage: { type: String },
         isConnected: { type: Boolean },
         onConfigComplete: { type: Function },
-        onBackClick: { type: Function },
     };
 
     constructor() {
@@ -270,7 +270,6 @@ export class LLMConfigView extends LitElement {
         this.successMessage = '';
         this.isConnected = false;
         this.onConfigComplete = () => {};
-        this.onBackClick = () => {};
         this.backendUrl = 'http://localhost:5000';
         
         this.loadProviders();
@@ -301,13 +300,12 @@ export class LLMConfigView extends LitElement {
 
     async loadProviders() {
         try {
-            const response = await fetch(`${this.backendUrl}/api/providers`);
-            if (response.ok) {
-                this.providers = await response.json();
-                this.isConnected = true;
-            } else {
-                this.isConnected = false;
-                this.errorMessage = 'Failed to load LLM providers';
+            // Use LLMConfigManager to get available providers
+            this.providers = LLMConfigManager.getAvailableProviders();
+            this.isConnected = await LLMConfigManager.isBackendAvailable();
+            
+            if (!this.isConnected) {
+                this.errorMessage = 'Cannot connect to backend server. Make sure the Python backend is running.';
             }
         } catch (error) {
             this.isConnected = false;
@@ -328,6 +326,24 @@ export class LLMConfigView extends LitElement {
         this.apiConfig = { ...this.apiConfig, [field]: value };
     }
 
+    handleModelChange(value) {
+        if (value === 'other') {
+            this.apiConfig = { 
+                ...this.apiConfig, 
+                show_custom_model: true,
+                model_name: this.apiConfig.custom_model || ''
+            };
+        } else {
+            this.apiConfig = { 
+                ...this.apiConfig, 
+                show_custom_model: false,
+                model_name: value,
+                custom_model: ''
+            };
+        }
+        this.requestUpdate();
+    }
+
     async handleConnect() {
         if (!this.selectedProvider || this.isLoading) return;
 
@@ -337,33 +353,26 @@ export class LLMConfigView extends LitElement {
         this.requestUpdate();
 
         try {
-            const response = await fetch(`${this.backendUrl}/api/configure`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    provider: this.selectedProvider,
-                    config: this.apiConfig,
-                    session_id: 'default'
-                })
-            });
+            // Use LLMConfigManager to add the new provider configuration
+            const finalModel = this.apiConfig.show_custom_model ? this.apiConfig.custom_model : this.apiConfig.model_name;
+            
+            const config = {
+                provider: this.selectedProvider,
+                apiKey: this.apiConfig.api_key || this.apiConfig.base_url,
+                model: finalModel
+            };
 
-            const result = await response.json();
+            const result = await LLMConfigManager.addProviderConfig(this.selectedProvider, config);
 
             if (result.success) {
-                this.successMessage = `Successfully connected to ${result.provider} (${result.model})`;
-                
-                // Save configuration for the chat view
-                localStorage.setItem('llm_provider_default', result.provider);
-                localStorage.setItem('llm_model_default', result.model);
+                this.successMessage = `Successfully configured ${this.selectedProvider} (${config.model})`;
                 
                 // Notify parent component
                 setTimeout(() => {
                     this.onConfigComplete({
-                        provider: result.provider,
-                        model: result.model,
-                        sessionId: result.session_id
+                        provider: this.selectedProvider,
+                        model: config.model,
+                        sessionId: 'default'
                     });
                 }, 1000);
             } else {
@@ -371,7 +380,7 @@ export class LLMConfigView extends LitElement {
             }
         } catch (error) {
             console.error('Error configuring LLM:', error);
-            this.errorMessage = 'Network error: Could not reach backend server';
+            this.errorMessage = 'Network error: Could not configure LLM';
         } finally {
             this.isLoading = false;
             this.requestUpdate();
@@ -390,55 +399,68 @@ export class LLMConfigView extends LitElement {
                 <div class="section-title">Configure ${this.selectedProvider}</div>
                 
                 <div class="config-form">
-                    ${providerConfig.api_key ? html`
+                    ${providerConfig.requiresApiKey ? html`
                         <div class="form-group">
                             <label class="form-label">API Key</label>
                             <input
                                 type="password"
                                 class="form-control"
-                                placeholder="Enter your API key"
+                                placeholder=${providerConfig.placeholder || "Enter your API key"}
                                 .value=${this.apiConfig.api_key || ''}
                                 @input=${e => this.handleConfigChange('api_key', e.target.value)}
                             />
                             <div class="form-description">
-                                Your ${this.selectedProvider} API key (kept secure and not stored)
+                                Your ${this.selectedProvider} API key (stored securely in local storage)
                             </div>
                         </div>
                     ` : ''}
 
-                    ${providerConfig.base_url ? html`
+                    ${this.selectedProvider === 'Local Ollama' ? html`
                         <div class="form-group">
                             <label class="form-label">Base URL</label>
                             <input
                                 type="url"
                                 class="form-control"
-                                placeholder=${this.selectedProvider === 'Local Ollama' ? 'http://localhost:11434' : 'Enter base URL'}
-                                .value=${this.apiConfig.base_url || (this.selectedProvider === 'Local Ollama' ? 'http://localhost:11434' : '')}
+                                placeholder="http://localhost:11434"
+                                .value=${this.apiConfig.base_url || 'http://localhost:11434'}
                                 @input=${e => this.handleConfigChange('base_url', e.target.value)}
                             />
                             <div class="form-description">
-                                ${this.selectedProvider === 'Local Ollama' 
-                                    ? 'URL where your Ollama server is running'
-                                    : `Custom base URL for ${this.selectedProvider} API`}
+                                URL where your Ollama server is running
                             </div>
                         </div>
                     ` : ''}
 
-                    ${providerConfig.model_name ? html`
+                    <div class="form-group">
+                        <label class="form-label">Model</label>
+                        <select
+                            class="form-control"
+                            .value=${this.apiConfig.model_name === this.apiConfig.custom_model ? 'other' : (this.apiConfig.model_name || '')}
+                            @change=${e => this.handleModelChange(e.target.value)}
+                        >
+                            <option value="">Select a model</option>
+                            ${providerConfig.models.map(model => html`
+                                <option value=${model}>${model}</option>
+                            `)}
+                            <option value="other">Other (custom model)</option>
+                        </select>
+                        <div class="form-description">
+                            Choose the specific model to use for this provider
+                        </div>
+                    </div>
+
+                    ${this.apiConfig.show_custom_model ? html`
                         <div class="form-group">
-                            <label class="form-label">Model</label>
-                            <select
+                            <label class="form-label">Custom Model Name</label>
+                            <input
+                                type="text"
                                 class="form-control"
-                                .value=${this.apiConfig.model_name || ''}
-                                @change=${e => this.handleConfigChange('model_name', e.target.value)}
-                            >
-                                <option value="">Select a model</option>
-                                ${providerConfig.models.map(model => html`
-                                    <option value=${model}>${model}</option>
-                                `)}
-                            </select>
+                                placeholder="Enter custom model name (e.g., gpt-4-turbo-preview)"
+                                .value=${this.apiConfig.custom_model || ''}
+                                @input=${e => this.handleConfigChange('custom_model', e.target.value)}
+                            />
                             <div class="form-description">
-                                Choose the specific model to use for this provider
+                                Enter the exact model name as required by the provider
                             </div>
                         </div>
                     ` : ''}
@@ -446,12 +468,12 @@ export class LLMConfigView extends LitElement {
                     <button 
                         class="connect-button" 
                         @click=${this.handleConnect}
-                        ?disabled=${this.isLoading || !this.isConnected}
+                        ?disabled=${this.isLoading || !this.isConnected || (!this.apiConfig.model_name && !this.apiConfig.custom_model) || (providerConfig.requiresApiKey && !this.apiConfig.api_key)}
                     >
                         ${this.isLoading ? html`
                             <div class="loading-spinner"></div>
-                            Connecting...
-                        ` : 'Connect to LLM'}
+                            Configuring...
+                        ` : 'Add Provider'}
                     </button>
 
                     ${this.errorMessage ? html`

@@ -36,6 +36,15 @@ const cheddar = {
     // Platform detection
     isLinux: process.platform === 'linux',
     isMacOS: process.platform === 'darwin',
+    // Shortcut handler
+    handleShortcut: (shortcut) => {
+        if (shortcut === 'ctrl+enter' || shortcut === 'cmd+enter') {
+            // Trigger screenshot and send to LLM
+            if (PersonalPaApp && PersonalPaApp.handleScreenshotAndSend) {
+                PersonalPaApp.handleScreenshotAndSend();
+            }
+        }
+    }
 };
 
 // Make it globally available
