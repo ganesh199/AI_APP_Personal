@@ -132,9 +132,9 @@ export class MainView extends LitElement {
         onLLMChatClick: { type: Function },
         onDirectChatClick: { type: Function },
 <<<<<<< HEAD
-        onChatHistoryClick: { type: Function },
 =======
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
+        onChatHistoryClick: { type: Function },
+>>>>>>> 13371f78f6e9452abc4c741cf359b05e28942d0a
         llmConfig: { type: Object },
     };
 
@@ -144,9 +144,9 @@ export class MainView extends LitElement {
         this.onLLMChatClick = () => {};
         this.onDirectChatClick = () => {};
 <<<<<<< HEAD
-        this.onChatHistoryClick = () => {};
 =======
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
+        this.onChatHistoryClick = () => {};
+>>>>>>> 13371f78f6e9452abc4c741cf359b05e28942d0a
         this.llmConfig = null;
         this.loadLayoutMode();
         this.loadLLMConfig();
@@ -217,15 +217,14 @@ export class MainView extends LitElement {
             <div class="action-buttons">
                 ${this.llmConfig ? html`
                     <button class="action-button" @click=${this.onDirectChatClick}>
-<<<<<<< HEAD
                         💬 Start New Chat with ${this.llmConfig.provider}
                     </button>
+<<<<<<< HEAD
+=======
                     <button class="action-button secondary" @click=${this.onChatHistoryClick}>
                         📚 View Chat History
-=======
-                        💬 Start Chat with ${this.llmConfig.provider}
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
                     </button>
+>>>>>>> 13371f78f6e9452abc4c741cf359b05e28942d0a
                     <button class="action-button secondary" @click=${this.onLLMChatClick}>
                         🔧 Change AI Provider
                     </button>

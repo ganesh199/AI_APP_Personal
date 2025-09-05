@@ -52,24 +52,6 @@ export class LLMChatView extends LitElement {
             color: var(--description-color, rgba(255, 255, 255, 0.6));
         }
 
-        .back-button {
-            background: var(--button-background);
-            color: var(--text-color);
-            border: 1px solid var(--button-border);
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.15s ease;
-        }
-
-        .back-button:hover {
-            background: var(--hover-background);
-        }
 
         .chat-messages {
             flex: 1;
@@ -565,13 +547,13 @@ export class LLMChatView extends LitElement {
         currentModel: { type: String },
         sessionId: { type: String },
         isConnected: { type: Boolean },
+<<<<<<< HEAD
+=======
         onBackClick: { type: Function },
+>>>>>>> 13371f78f6e9452abc4c741cf359b05e28942d0a
         configuredProviders: { type: Array },
         selectedProviderKey: { type: String },
-<<<<<<< HEAD
         uploadedFiles: { type: Array },
-=======
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
     };
 
     constructor() {
@@ -584,18 +566,12 @@ export class LLMChatView extends LitElement {
         this.currentModel = '';
         this.sessionId = this.generateSessionId(); // Generate new session ID each time
         this.isConnected = false;
-        this.onBackClick = () => {};
         this.backendUrl = 'http://localhost:5000';
         this.configuredProviders = [];
         this.selectedProviderKey = '';
-<<<<<<< HEAD
         this.uploadedFiles = [];
         
         // Don't load old chat history - start fresh
-=======
-        
-        this.loadChatHistory();
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
         this.loadConfiguredProviders();
         this.checkBackendConnection();
     }
@@ -712,18 +688,7 @@ export class LLMChatView extends LitElement {
 
             const response = await fetch(`${this.backendUrl}/api/chat`, {
                 method: 'POST',
-<<<<<<< HEAD
                 body: formData // Use FormData instead of JSON for file uploads
-=======
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: message,
-                    session_id: this.sessionId,
-                    provider_key: this.selectedProviderKey
-                })
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
             });
 
             const result = await response.json();
@@ -795,7 +760,6 @@ export class LLMChatView extends LitElement {
         return html`
             <div class="message ${message.role}">
                 <div class="message-content">${content}</div>
-<<<<<<< HEAD
                 ${message.files && message.files.length > 0 ? html`
                     <div class="message-files">
                         ${message.files.map(file => html`
@@ -807,8 +771,6 @@ export class LLMChatView extends LitElement {
                         `)}
                     </div>
                 ` : ''}
-=======
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
                 <div class="message-time">${this.formatTime(message.timestamp)}</div>
             </div>
         `;
@@ -884,7 +846,6 @@ export class LLMChatView extends LitElement {
         }
     }
 
-<<<<<<< HEAD
     handleUploadClick() {
         const fileInput = this.shadowRoot.querySelector('.file-input');
         if (fileInput) {
@@ -953,8 +914,6 @@ export class LLMChatView extends LitElement {
         }
     }
 
-=======
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
     renderChatMessages() {
         if (this.chatHistory.length === 0) {
             return html`
@@ -991,17 +950,9 @@ export class LLMChatView extends LitElement {
                             ${this.currentModel || 'No model configured'}
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div class="status-indicator">
-                            <div class="status-dot ${this.isConnected ? '' : 'disconnected'}"></div>
-                            <span>${this.isConnected ? 'Connected' : 'Disconnected'}</span>
-                        </div>
-                        <button class="back-button" @click=${this.onBackClick}>
-                            <svg width="16px" height="16px" stroke-width="1.7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M15 6L9 12L15 18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"></path>
-                            </svg>
-                            Back
-                        </button>
+                    <div class="status-indicator">
+                        <div class="status-dot ${this.isConnected ? '' : 'disconnected'}"></div>
+                        <span>${this.isConnected ? 'Connected' : 'Disconnected'}</span>
                     </div>
                 </div>
 
@@ -1030,7 +981,6 @@ export class LLMChatView extends LitElement {
                     </div>
                 ` : ''}
 
-<<<<<<< HEAD
                 ${this.uploadedFiles.length > 0 ? html`
                     <div class="uploaded-files">
                         ${this.uploadedFiles.map((file, index) => html`
@@ -1048,8 +998,6 @@ export class LLMChatView extends LitElement {
                     </div>
                 ` : ''}
 
-=======
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
                 <div class="chat-input-container">
                     <div class="file-upload-container">
                         <button 

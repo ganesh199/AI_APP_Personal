@@ -129,10 +129,7 @@ export class PersonalPaApp extends LitElement {
         
         // Auto-configure LLM backend if configuration exists
         this.initializeLLMConfig();
-<<<<<<< HEAD
         
-=======
->>>>>>> d24b9faca0b9aafa334bc53bc26a721603ad3c24
     }
 
 
@@ -170,10 +167,13 @@ export class PersonalPaApp extends LitElement {
         this.requestUpdate();
     }
 
+<<<<<<< HEAD
+=======
     handleChatHistoryClick() {
         this.currentView = 'chat-history';
         this.requestUpdate();
     }
+>>>>>>> 13371f78f6e9452abc4c741cf359b05e28942d0a
 
     handleAdvancedClick() {
         this.currentView = 'advanced';
@@ -454,7 +454,10 @@ export class PersonalPaApp extends LitElement {
                         .onLayoutModeChange=${layoutMode => this.handleLayoutModeChange(layoutMode)}
                         .onLLMChatClick=${() => this.handleLLMChatClick()}
                         .onDirectChatClick=${() => this.handleDirectChatClick()}
+<<<<<<< HEAD
+=======
                         .onChatHistoryClick=${() => this.handleChatHistoryClick()}
+>>>>>>> 13371f78f6e9452abc4c741cf359b05e28942d0a
                     ></main-view>
                 `;
             case 'customize':
@@ -490,7 +493,6 @@ export class PersonalPaApp extends LitElement {
                 return html`
                     <llm-config-view
                         .onConfigComplete=${config => this.handleLLMConfigComplete(config)}
-                        .onBackClick=${() => this.handleBackClick()}
                     ></llm-config-view>
                 `;
             case 'llm-chat':
@@ -499,7 +501,6 @@ export class PersonalPaApp extends LitElement {
                         .currentProvider=${this.llmChatConfig?.provider || ''}
                         .currentModel=${this.llmChatConfig?.model || ''}
                         .sessionId=${this.llmChatConfig?.sessionId || 'default'}
-                        .onBackClick=${() => this.handleBackClick()}
                     ></llm-chat-view>
                 `;
             default:
@@ -524,7 +525,11 @@ export class PersonalPaApp extends LitElement {
                         .onHistoryClick=${() => this.handleHistoryClick()}
                         .onAdvancedClick=${() => this.handleAdvancedClick()}
                         .onStealthToggle=${() => this.handleStealthToggle()}
+<<<<<<< HEAD
+                        .onCloseClick=${() => this.handleClose()}
+=======
                         .onCloseClick=${() => this.handleCloseClick()}
+>>>>>>> 13371f78f6e9452abc4c741cf359b05e28942d0a
                         .onBackClick=${() => this.handleBackClick()}
                         .onHideToggleClick=${() => this.handleHideToggle()}
                         ?isClickThrough=${this._isClickThrough}
